@@ -23,8 +23,12 @@
 
 (defn run-test [test-sym]
   (binding [*report* (atom [])]
-    (with-redefs [test/report
-                  (fn [report]
-                    (swap! *report* conj (parse-report report)))]
-      (test/run-test-var (resolve test-sym)))
+    (with-redefs [test/report (fn [report]
+                                (swap! *report*
+                                       conj
+                                       (parse-report report)))]
+      (try (test/run-test-var (resolve test-sym))
+           (catch Exception ex
+             (swap! *report* conj {:type :error
+                                   :exceptions (serialization/analyze-exception ex)}))))
     @*report*))
