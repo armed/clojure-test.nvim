@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
-   [deps-deploy.deps-deploy :as deps-deploy]))
+   [k16.kaven.deploy :as kaven.deploy]))
 
 (def basis (delay (b/create-basis {})))
 
@@ -35,8 +35,13 @@
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
 
+(def ^:private clojars-credentials
+  {:username (System/getenv "CLOJARS_USERNAME")
+   :password (System/getenv "CLOJARS_PASSWORD")})
+
 (defn release [_]
-  (deps-deploy/deploy {:installer :remote
-                       :artifact (b/resolve-path jar-file)
-                       :pom-file (b/pom-path {:lib lib
-                                              :class-dir class-dir})}))
+  (kaven.deploy/deploy
+   {:jar-path (b/resolve-path jar-file)
+    :repository {:id "clojars"
+                 :credentials clojars-credentials}}))
+
