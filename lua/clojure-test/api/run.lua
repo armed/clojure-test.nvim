@@ -1,3 +1,4 @@
+local exceptions_api = require("clojure-test.api.exceptions")
 local interface_api = require("clojure-test.ui")
 local config = require("clojure-test.config")
 local nio = require("nio")
@@ -15,41 +16,6 @@ local function go_to_test(target_window, test)
   end)
 end
 
-local function go_to_exception(target_window, exception)
-  local stack = exception["stack-trace"]
-  if not stack or stack == vim.NIL then
-    return
-  end
-
-  -- This will iterate over all the frames in a stack trace until a frame points to
-  -- a line/file/symbol that is within the project classpath and cwd.
-  --
-  -- This is a bit hacky as it involves many sequential evals, but it's quick and
-  -- dirty and it works.
-  --
-  -- Future implementation should probably do all this work in clojure land over a
-  -- single eval
-  for _, frame in ipairs(stack) do
-    local symbol = frame.names[1]
-    local line = frame.line
-    if line == vim.NIL then
-      line = nil
-    end
-
-    if symbol then
-      local meta = config.backend:resolve_metadata_for_symbol(symbol)
-      if meta and meta ~= vim.NIL then
-        vim.api.nvim_set_current_win(target_window)
-        vim.cmd("edit " .. meta.file)
-        vim.schedule(function()
-          vim.api.nvim_win_set_cursor(0, { line or meta.line or 1, meta.column or 0 })
-        end)
-        return
-      end
-    end
-  end
-end
-
 -- This function is called when <Cr> is pressed while on a node in the report
 -- tree.
 --
@@ -64,14 +30,15 @@ local function handle_go_to_event(target_window, event)
 
     if node.assertion then
       if node.assertion.exceptions then
-        return go_to_exception(target_window, node.assertion.exceptions[#node.assertion.exceptions])
+        local exception = node.assertion.exceptions[#node.assertion.exceptions]
+        return exceptions_api.go_to_exception(target_window, exception)
       end
 
       return go_to_test(target_window, node.test)
     end
 
     if node.exception then
-      return go_to_exception(target_window, node.exception)
+      return exceptions_api.go_to_exception(target_window, node.exception)
     end
   end)
 end
