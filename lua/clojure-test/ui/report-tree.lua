@@ -106,6 +106,7 @@ local M = {}
 function M.create(window, on_event)
   local tree = NuiTree({
     winid = window.winid,
+    bufnr = vim.api.nvim_win_get_buf(window.winid),
     ns_id = "testns",
     nodes = {},
     prepare_node = function(node)
@@ -140,6 +141,9 @@ function M.create(window, on_event)
   for _, chord in ipairs(utils.into_table(config.keys.ui.collapse_node)) do
     window:map("n", chord, function()
       local node = tree:get_node()
+      if not node then
+        return
+      end
 
       if not node:has_children() or not node:is_expanded() then
         local node_id = node:get_parent_id()
@@ -157,7 +161,7 @@ function M.create(window, on_event)
   for _, chord in ipairs(utils.into_table(config.keys.ui.expand_node)) do
     window:map("n", chord, function()
       local node = tree:get_node()
-      if node:expand() then
+      if node and node:expand() then
         tree:render()
       end
     end, map_options)

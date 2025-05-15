@@ -108,6 +108,10 @@ function M.create(on_event)
       return
     end
 
+    on_event({
+      type = "unmount",
+    })
+
     UI.mounted = false
     UI.layout:unmount()
     UI.layout = nil
@@ -117,6 +121,9 @@ function M.create(on_event)
   end
 
   function UI:render_reports(reports)
+    if not UI.mounted then
+      return
+    end
     UI.tree:render_reports(reports)
   end
 

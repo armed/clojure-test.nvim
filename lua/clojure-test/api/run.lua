@@ -70,13 +70,20 @@ function M.run_tests(tests)
     config.hooks.before_run(tests)
   end
 
-  local last_active_window = vim.api.nvim_get_current_win()
+  local state = {
+    last_active_window = vim.api.nvim_get_current_win(),
+    unmounted = false,
+  }
 
   local ui = active_ui
   if not ui then
     ui = interface_api.create(function(event)
       if event.type == "go-to" then
-        return handle_go_to_event(last_active_window, event)
+        return handle_go_to_event(state.last_active_window, event)
+      end
+      if event.type == "unmount" then
+        state.unmounted = true
+        return
       end
     end)
     active_ui = ui
@@ -100,6 +107,10 @@ function M.run_tests(tests)
   nio.run(function()
     local semaphore = nio.control.semaphore(1)
     for _, test in ipairs(tests) do
+      if state.unmounted then
+        break
+      end
+
       semaphore.with(function()
         local report = config.backend:run_test(test)
         if report then
