@@ -9,7 +9,13 @@ local M = {}
 
 M.state = {
   previous = nil,
+  last_run = nil,
 }
+
+local function run_tests_and_update_state(tests)
+  M.state.previous = tests
+  M.state.last_run = run_api.run_tests(tests)
+end
 
 function M.run_all_tests()
   nio.run(function()
@@ -17,8 +23,7 @@ function M.run_all_tests()
     if #tests == 0 then
       return
     end
-    M.state.previous = tests
-    run_api.run_tests(tests)
+    run_tests_and_update_state(tests)
   end)
 end
 
@@ -37,8 +42,7 @@ function M.run_tests()
       return
     end
 
-    M.state.previous = tests
-    run_api.run_tests(tests)
+    run_tests_and_update_state(tests)
   end)
 end
 
@@ -65,8 +69,7 @@ function M.run_tests_in_ns()
       return
     end
 
-    M.state.previous = tests
-    run_api.run_tests(tests)
+    run_tests_and_update_state(tests)
   end)
 end
 
@@ -75,8 +78,33 @@ function M.rerun_previous()
     if not M.state.previous then
       return
     end
-    run_api.run_tests(M.state.previous)
+    run_tests_and_update_state(M.state.previous)
   end)
+end
+
+function M.rerun_failed()
+  nio.run(function()
+    local failed = {}
+    for test, report in pairs(M.state.last_run) do
+      if report.status ~= "passed" then
+        table.insert(failed, test)
+      end
+    end
+
+    if #failed == 0 then
+      vim.notify("No failed tests to run", vim.log.levels.WARN)
+      return
+    end
+
+    run_tests_and_update_state(failed)
+  end)
+end
+
+function M.open_last_report()
+  if not M.state.last_run  then
+    return
+  end
+  run_api.open_reports(M.state.last_run)
 end
 
 function M.load_tests()

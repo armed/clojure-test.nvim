@@ -47,6 +47,24 @@ local M = {}
 
 local active_ui = nil
 
+function M.open_reports(reports)
+  local last_active_window = vim.api.nvim_get_current_win()
+
+  local ui = active_ui
+  if not ui then
+    ui = interface_api.create(function(event)
+      if event.type == "go-to" then
+        return handle_go_to_event(last_active_window, event)
+      end
+    end)
+    active_ui = ui
+  end
+
+  ui:mount()
+
+  ui:render_reports(reports)
+end
+
 function M.run_tests(tests)
   if config.hooks.before_run then
     config.hooks.before_run(tests)
@@ -79,17 +97,18 @@ function M.run_tests(tests)
 
   ui:render_reports(reports)
 
-  local semaphore = nio.control.semaphore(1)
-  for _, test in ipairs(tests) do
-    nio.run(function()
+  nio.run(function()
+    local semaphore = nio.control.semaphore(1)
+    for _, test in ipairs(tests) do
       semaphore.with(function()
         local report = config.backend:run_test(test)
         if report then
           queue.put(report)
         end
       end)
-    end)
-  end
+    end
+    queue.put(nil)
+  end)
 
   while true do
     local report = queue.get()
@@ -100,6 +119,8 @@ function M.run_tests(tests)
     reports[report.test] = report
     ui:render_reports(reports)
   end
+
+  return reports
 end
 
 return M
