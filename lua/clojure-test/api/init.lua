@@ -86,7 +86,7 @@ function M.rerun_failed()
   nio.run(function()
     local failed = {}
     for test, report in pairs(M.state.last_run) do
-      if report.status ~= "passed" then
+      if report.status == "failed" then
         table.insert(failed, test)
       end
     end
