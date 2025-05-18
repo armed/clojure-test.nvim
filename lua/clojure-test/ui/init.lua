@@ -108,14 +108,14 @@ function M.create(on_event)
       return
     end
 
-    on_event({
-      type = "unmount",
-    })
-
     UI.mounted = false
     UI.layout:unmount()
     UI.layout = nil
     UI.tree = nil
+
+    on_event({
+      type = "unmount",
+    })
 
     vim.api.nvim_set_current_win(UI.last_active_window)
   end

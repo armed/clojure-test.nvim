@@ -83,6 +83,7 @@ function M.run_tests(tests)
       end
       if event.type == "unmount" then
         state.unmounted = true
+        active_ui = nil
         return
       end
     end)
