@@ -17,6 +17,14 @@ local function run_tests_and_update_state(tests)
   M.state.last_run = run_api.run_tests(tests)
 end
 
+local function with_exceptions(fn)
+  nio.run(fn, function(success, stacktrace)
+    if not success then
+      vim.notify(stacktrace, vim.log.levels.ERROR)
+    end
+  end)
+end
+
 function M.run_all_tests()
   nio.run(function()
     local tests = tests_api.get_all_tests()
@@ -28,7 +36,7 @@ function M.run_all_tests()
 end
 
 function M.run_tests()
-  nio.run(function()
+  with_exceptions(function()
     local current_test = location.get_test_at_cursor()
 
     local tests
@@ -47,7 +55,7 @@ function M.run_tests()
 end
 
 function M.run_tests_in_ns()
-  nio.run(function()
+  with_exceptions(function()
     local namespaces
     local current_namespace = location.get_current_namespace()
     local test_namespaces = tests_api.get_test_namespaces()
@@ -74,7 +82,7 @@ function M.run_tests_in_ns()
 end
 
 function M.rerun_previous()
-  nio.run(function()
+  with_exceptions(function()
     if not M.state.previous then
       return
     end
@@ -83,7 +91,7 @@ function M.rerun_previous()
 end
 
 function M.rerun_failed()
-  nio.run(function()
+  with_exceptions(function()
     local failed = {}
     for test, report in pairs(M.state.last_run) do
       if report.status == "failed" then
@@ -101,20 +109,20 @@ function M.rerun_failed()
 end
 
 function M.open_last_report()
-  if not M.state.last_run  then
+  if not M.state.last_run then
     return
   end
   run_api.open_reports(M.state.last_run)
 end
 
 function M.load_tests()
-  nio.run(function()
+  with_exceptions(function()
     tests_api.load_tests()
   end)
 end
 
 function M.analyze_exception(sym)
-  nio.run(function()
+  with_exceptions(function()
     exceptions_api.render_exception(sym)
   end)
 end
