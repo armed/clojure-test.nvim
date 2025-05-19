@@ -63,6 +63,11 @@ function M.create()
           expected = "(= 1 1)",
           actual = "(= 1 1)",
         },
+        {
+          type = "pass",
+          expected = "(= 2 2)",
+          actual = "(= 2 2)",
+        },
       },
     }
   end

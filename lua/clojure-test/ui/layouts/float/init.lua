@@ -6,6 +6,14 @@ local utils = require("clojure-test.utils")
 local function handle_on_move(layout, event)
   local node = event.node
 
+  if node.type == "report" then
+    vim.schedule(function()
+      layout:render_single()
+      components.summary.render_summary(layout.windows.right.bufnr, node.report)
+    end)
+    return
+  end
+
   if node.assertion then
     if node.assertion.exceptions then
       vim.schedule(function()

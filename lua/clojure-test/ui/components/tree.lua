@@ -48,6 +48,7 @@ local function exceptions_to_nodes(exceptions)
     }
 
     local node = NuiTree.Node({
+      type = "exception",
       line = line,
       exception = ex,
     })
@@ -62,6 +63,7 @@ local function assertion_to_node(test, assertion)
   local children = exceptions_to_nodes(assertion.exceptions or {})
 
   local node = NuiTree.Node({
+    type = "assertion",
     line = line,
     assertion = assertion,
     test = test,
@@ -83,6 +85,7 @@ local function report_to_node(report, is_expanded)
   end
 
   local node = NuiTree.Node({
+    type = "report",
     line = report_line,
     test = report.test,
     report = report,
