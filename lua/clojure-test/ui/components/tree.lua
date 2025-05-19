@@ -150,11 +150,10 @@ end
 
 local M = {}
 
-function M.create(window, on_event)
+function M.create(buf, on_event)
   local tree = NuiTree({
-    winid = window.winid,
-    bufnr = vim.api.nvim_win_get_buf(window.winid),
-    ns_id = "testns",
+    bufnr = buf,
+    ns_id = "clojure-test-report-tree",
     nodes = {},
     prepare_node = function(node)
       local line = NuiLine()
@@ -183,10 +182,14 @@ function M.create(window, on_event)
     tree = tree,
   }
 
-  local map_options = { noremap = true, nowait = true }
+  local map_options = {
+    noremap = true,
+    nowait = true,
+    buffer = buf,
+  }
 
   for _, chord in ipairs(utils.into_table(config.keys.ui.collapse_node)) do
-    window:map("n", chord, function()
+    vim.keymap.set("n", chord, function()
       local node = tree:get_node()
       if not node then
         return
@@ -206,7 +209,7 @@ function M.create(window, on_event)
   end
 
   for _, chord in ipairs(utils.into_table(config.keys.ui.expand_node)) do
-    window:map("n", chord, function()
+    vim.keymap.set("n", chord, function()
       local node = tree:get_node()
       if node and node:expand() then
         tree:render()
@@ -215,7 +218,7 @@ function M.create(window, on_event)
   end
 
   for _, chord in ipairs(utils.into_table(config.keys.ui.go_to)) do
-    window:map("n", chord, function()
+    vim.keymap.set("n", chord, function()
       local node = tree:get_node()
       if not node then
         return
@@ -228,18 +231,21 @@ function M.create(window, on_event)
     end, map_options)
   end
 
-  local event = require("nui.utils.autocmd").event
-  window:on({ event.CursorMoved }, function()
-    local node = tree:get_node()
-    if not node then
-      return
-    end
+  vim.api.nvim_create_autocmd("CursorMoved", {
+    desc = "Track cursor in report-tree",
+    buffer = buf,
+    callback = function()
+      local node = tree:get_node()
+      if not node then
+        return
+      end
 
-    on_event({
-      type = "hover",
-      node = node,
-    })
-  end, {})
+      on_event({
+        type = "hover",
+        node = node,
+      })
+    end,
+  })
 
   function ReportTree:render_reports(reports)
     tree:set_nodes(reports_to_nodes(reports, tree:get_nodes()))

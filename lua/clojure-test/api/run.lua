@@ -1,5 +1,5 @@
 local exceptions_api = require("clojure-test.api.exceptions")
-local interface_api = require("clojure-test.ui")
+local layouts = require("clojure-test.ui.layouts")
 local config = require("clojure-test.config")
 local nio = require("nio")
 
@@ -43,25 +43,24 @@ local function handle_go_to_event(target_window, event)
   end)
 end
 
-local M = {}
-
-local active_ui = nil
+local M = {
+  active_ui = nil,
+}
 
 function M.open_reports(reports)
   local last_active_window = vim.api.nvim_get_current_win()
 
-  local ui = active_ui
+  local ui = M.active_ui
   if not ui then
-    ui = interface_api.create(function(event)
+    ui = layouts.create_layout(function(event)
       if event.type == "go-to" then
         return handle_go_to_event(last_active_window, event)
       end
     end)
-    active_ui = ui
+    M.active_ui = ui
   end
 
   ui:mount()
-
   ui:render_reports(reports)
 end
 
@@ -75,19 +74,19 @@ function M.run_tests(tests)
     unmounted = false,
   }
 
-  local ui = active_ui
+  local ui = M.active_ui
   if not ui then
-    ui = interface_api.create(function(event)
+    ui = layouts.create_layout(function(event)
       if event.type == "go-to" then
         return handle_go_to_event(state.last_active_window, event)
       end
       if event.type == "unmount" then
         state.unmounted = true
-        active_ui = nil
+        M.active_ui = nil
         return
       end
     end)
-    active_ui = ui
+    M.active_ui = ui
   end
 
   ui:mount()

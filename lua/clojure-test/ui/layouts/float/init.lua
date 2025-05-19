@@ -1,47 +1,31 @@
-local report_tree_api = require("clojure-test.ui.report-tree")
-local exceptions = require("clojure-test.ui.exceptions")
-local layout_api = require("clojure-test.ui.layout")
+local layout_api = require("clojure-test.ui.layouts.float.layout")
+local components = require("clojure-test.ui.components")
 local config = require("clojure-test.config")
 local utils = require("clojure-test.utils")
 
-local M = {}
-
-local function write_clojure_to_buf(buf, contents)
-  vim.api.nvim_set_option_value("filetype", "clojure", {
-    buf = buf,
-  })
-
-  local lines = {}
-  if contents then
-    lines = vim.split(contents, "\n")
-  end
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-end
-
-local function handle_on_move(UI, event)
+local function handle_on_move(layout, event)
   local node = event.node
-  local layout = UI.layout
 
   if node.assertion then
     if node.assertion.exceptions then
       vim.schedule(function()
         if node.assertion.expected then
           layout:render_double()
-          write_clojure_to_buf(layout.windows.left.bufnr, node.assertion.expected)
-          exceptions.render_exceptions_to_buf(layout.windows.right.bufnr, node.assertion.exceptions)
+          components.clojure.write_clojure_to_buf(layout.windows.left.bufnr, node.assertion.expected)
+          components.exception.render_exceptions_to_buf(layout.windows.right.bufnr, node.assertion.exceptions)
           return
         end
 
         layout:render_single()
-        exceptions.render_exceptions_to_buf(layout.windows.right.bufnr, node.assertion.exceptions)
+        components.exception.render_exceptions_to_buf(layout.windows.right.bufnr, node.assertion.exceptions)
       end)
       return
     end
 
     vim.schedule(function()
       layout:render_double()
-      write_clojure_to_buf(layout.windows.left.bufnr, node.assertion.expected)
-      write_clojure_to_buf(layout.windows.right.bufnr, node.assertion.actual)
+      components.clojure.write_clojure_to_buf(layout.windows.left.bufnr, node.assertion.expected)
+      components.clojure.write_clojure_to_buf(layout.windows.right.bufnr, node.assertion.actual)
     end)
     return
   end
@@ -49,18 +33,18 @@ local function handle_on_move(UI, event)
   if node.exception then
     vim.schedule(function()
       layout:render_single()
-      exceptions.render_exceptions_to_buf(layout.windows.right.bufnr, { node.exception })
+      components.exception.render_exceptions_to_buf(layout.windows.right.bufnr, { node.exception })
     end)
     return
   end
 
   vim.schedule(function()
     layout:render_single()
-    write_clojure_to_buf(layout.windows.right.bufnr, "")
+    components.clojure.write_clojure_to_buf(layout.windows.right.bufnr, "")
   end)
 end
 
-function M.create(on_event)
+return function(on_event)
   local UI = {
     mounted = false,
     layout = nil,
@@ -75,22 +59,20 @@ function M.create(on_event)
     end
 
     UI.mounted = true
-
     UI.layout = layout_api.create(function(event)
       if event.type == "on-focus-lost" then
         if not UI.mounted then
           return
         end
-        if not UI.layout:on_focus_lost() then
-          UI:unmount()
-        end
+        UI:unmount()
       end
     end)
+
     UI.layout:mount()
 
-    UI.tree = report_tree_api.create(UI.layout.windows.tree, function(event)
+    UI.tree = components.tree.create(UI.layout.windows.tree.bufnr, function(event)
       if event.type == "hover" then
-        return handle_on_move(UI, event)
+        return handle_on_move(UI.layout, event)
       end
 
       on_event(event)
@@ -113,11 +95,11 @@ function M.create(on_event)
     UI.layout = nil
     UI.tree = nil
 
+    vim.api.nvim_set_current_win(UI.last_active_window)
+
     on_event({
       type = "unmount",
     })
-
-    vim.api.nvim_set_current_win(UI.last_active_window)
   end
 
   function UI:render_reports(reports)
@@ -127,11 +109,7 @@ function M.create(on_event)
     UI.tree:render_reports(reports)
   end
 
-  function UI:render_exceptions(exception_chain) end
-
-  function UI:on() end
+  function UI:focus() end
 
   return UI
 end
-
-return M
