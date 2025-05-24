@@ -19,7 +19,12 @@ function M.render_exception_to_buf(buf, exception, start_line)
   exception_title:append(exception["class-name"], "Error")
   exception_title:append(": ", "Comment")
 
-  local title_lines = vim.split(exception.message, "\n")
+  local title_lines
+  if exception.message ~= vim.NIL then
+    title_lines = vim.split(exception.message, "\n")
+  else
+    title_lines = {"[NO MESSAGE]"}
+  end
   exception_title:append(title_lines[1], "TSParameter")
 
   table.insert(lines, exception_title)
