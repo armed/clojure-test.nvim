@@ -36,6 +36,15 @@ local function assertion_to_line(assertion)
     table.insert(line, NuiText("Fail"))
   end
 
+  if next(assertion.context) then
+    table.insert(line, NuiText(
+      " - " .. table.concat(
+        utils.reverse_table(assertion.context),
+        " "
+      )
+    ))
+  end
+
   return line
 end
 
