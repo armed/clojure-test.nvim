@@ -97,6 +97,49 @@
 (defn get-all-tests []
   (mapcat get-tests-in-ns (get-test-namespaces)))
 
+(defn- file-to-namespace [file-path]
+  (-> file-path
+      (str/replace #"\.clj$" "")
+      (str/replace #"/" ".")
+      (str/replace #"_" "-")
+      symbol))
+
+(defn get-tests-in-path [search-path]
+  (let [project-root (System/getProperty "user.dir")
+        normalized-search (str/replace search-path #"/$" "")
+        ^java.io.File target (io/file project-root normalized-search)]
+
+    (cond
+      (and (.exists target) (.isFile target))
+      (when (re-find #"_test\.clj$" (.getName target))
+        (let [abs-path (.getAbsolutePath target)]
+          (when-let [relative-path
+                     (some
+                      (fn [classpath-dir]
+                        (when (is-parent classpath-dir abs-path)
+                          (subs abs-path (inc (count classpath-dir)))))
+                      (get-classpath))]
+            (get-tests-in-ns (file-to-namespace relative-path)))))
+
+      (and (.exists target) (.isDirectory target))
+      (let [files (file-seq target)]
+        (->> files
+             (filter (fn [^java.io.File file]
+                       (and (.isFile file)
+                            (re-find #"_test\.clj$" (.getName file)))))
+             (keep (fn [^java.io.File file]
+                     (let [abs-path (.getAbsolutePath file)]
+                       (some
+                        (fn [classpath-dir]
+                          (when (is-parent classpath-dir abs-path)
+                            (subs abs-path (inc (count classpath-dir)))))
+                        (get-classpath)))))
+             (map file-to-namespace)
+             (mapcat get-tests-in-ns)))
+
+      :else
+      [])))
+
 (defn- namespace-to-file [sym]
   (-> (str sym)
       (str/replace #"\." "/")

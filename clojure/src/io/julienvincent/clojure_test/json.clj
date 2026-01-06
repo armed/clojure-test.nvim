@@ -44,3 +44,8 @@
 (defn analyze-exception [sym]
   (with-json-out
     (api.serialization/analyze-exception (var-get (resolve sym)))))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn get-tests-in-path [path]
+  (with-json-out
+    (api.query/get-tests-in-path path)))

@@ -8,6 +8,7 @@ local API = {
 
   resolve_metadata_for_symbol = "io.julienvincent.clojure-test.json/resolve-metadata-for-symbol",
   analyze_exception = "io.julienvincent.clojure-test.json/analyze-exception",
+  get_tests_in_path = "io.julienvincent.clojure-test.json/get-tests-in-path",
 }
 
 local function statement(api, ...)
@@ -74,6 +75,14 @@ function M.create(client)
 
   function backend:analyze_exception(symbol)
     return eval(client, API.analyze_exception, "'" .. symbol)
+  end
+
+  function backend:get_tests_in_path(path)
+    local tests = eval(client, API.get_tests_in_path, '"' .. path .. '"')
+    if not tests or type(tests) ~= "table" then
+      return {}
+    end
+    return tests
   end
 
   return backend
