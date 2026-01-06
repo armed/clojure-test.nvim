@@ -56,4 +56,8 @@ function M.get_tests_in_ns(namespace)
   end, tests)
 end
 
+function M.get_tests_in_path(path)
+  return config.backend:get_tests_in_path(path)
+end
+
 return M

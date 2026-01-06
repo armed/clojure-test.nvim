@@ -127,4 +127,15 @@ function M.analyze_exception(sym)
   end)
 end
 
+function M.run_tests_in_path(path)
+  with_exceptions(function()
+    local tests = tests_api.get_tests_in_path(path)
+    if not tests or type(tests) ~= "table" or #tests == 0 then
+      vim.notify("No tests found in " .. path, vim.log.levels.WARN)
+      return
+    end
+    run_tests_and_update_state(tests)
+  end)
+end
+
 return M
