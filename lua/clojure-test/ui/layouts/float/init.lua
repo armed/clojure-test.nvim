@@ -3,7 +3,7 @@ local components = require("clojure-test.ui.components")
 local config = require("clojure-test.config")
 local utils = require("clojure-test.utils")
 
-local function handle_on_move(layout, event)
+local function handle_on_move(layout, event, on_event)
   local node = event.node
 
   if node.type == "report" then
@@ -20,12 +20,38 @@ local function handle_on_move(layout, event)
         if node.assertion.expected then
           layout:render_double()
           components.clojure.write_clojure_to_buf(layout.windows.left.bufnr, node.assertion.expected)
-          components.exception.render_exceptions_to_buf(layout.windows.right.bufnr, node.assertion.exceptions)
+          components.exception.render_exceptions_to_buf(layout.windows.right.bufnr, {
+            exceptions = node.assertion.exceptions,
+            navigation = {
+              chords = config.keys.ui.go_to,
+              on_navigate = function(exception, frame)
+                on_event({
+                  type = "go-to",
+                  target = "exception",
+                  exception = exception,
+                  frame = frame,
+                })
+              end,
+            },
+          })
           return
         end
 
         layout:render_single()
-        components.exception.render_exceptions_to_buf(layout.windows.right.bufnr, node.assertion.exceptions)
+        components.exception.render_exceptions_to_buf(layout.windows.right.bufnr, {
+          exceptions = node.assertion.exceptions,
+          navigation = {
+            chords = config.keys.ui.go_to,
+            on_navigate = function(exception, frame)
+              on_event({
+                type = "go-to",
+                target = "exception",
+                exception = exception,
+                frame = frame,
+              })
+            end,
+          },
+        })
       end)
       return
     end
@@ -41,7 +67,9 @@ local function handle_on_move(layout, event)
   if node.exception then
     vim.schedule(function()
       layout:render_single()
-      components.exception.render_exceptions_to_buf(layout.windows.right.bufnr, { node.exception })
+      components.exception.render_exceptions_to_buf(layout.windows.right.bufnr, {
+        exceptions = { node.exception },
+      })
     end)
     return
   end
@@ -82,7 +110,7 @@ return function(on_event)
 
     UI.tree = components.tree.create(UI.layout.windows.tree.bufnr, function(event)
       if event.type == "hover" then
-        return handle_on_move(UI.layout, event)
+        return handle_on_move(UI.layout, event, on_event)
       end
 
       on_event(event)

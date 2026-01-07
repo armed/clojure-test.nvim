@@ -22,23 +22,13 @@ end
 -- This function implements a kind of 'go-to-definition' for the various types
 -- of nodes
 local function handle_go_to_event(target_window, event)
-  local node = event.node
   nio.run(function()
-    if node.test then
-      return go_to_test(target_window, node.test)
+    if event.target == "test" then
+      return go_to_test(target_window, event.test)
     end
 
-    if node.assertion then
-      if node.assertion.exceptions then
-        local exception = node.assertion.exceptions[#node.assertion.exceptions]
-        return exceptions_api.go_to_exception(target_window, exception)
-      end
-
-      return go_to_test(target_window, node.test)
-    end
-
-    if node.exception then
-      return exceptions_api.go_to_exception(target_window, node.exception)
+    if event.target == "exception" then
+      return exceptions_api.go_to_exception(target_window, event.exception, event.frame)
     end
   end)
 end

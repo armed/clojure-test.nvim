@@ -5,6 +5,43 @@ local NuiLine = require("nui.line")
 local NuiText = require("nui.text")
 local NuiTree = require("nui.tree")
 
+local function node_to_go_to_event(node)
+  if node.test then
+    return {
+      type = "go-to",
+      target = "test",
+      test = node.test,
+    }
+  end
+
+  if node.assertion then
+    if node.assertion.exceptions then
+      local exception = node.assertion.exceptions[#node.assertion.exceptions]
+      return {
+        type = "go-to",
+        target = "exception",
+        exception = exception,
+      }
+    end
+
+    return {
+      type = "go-to",
+      target = "test",
+      test = node.test,
+    }
+  end
+
+  if not node.exception then
+    return
+  end
+
+  return {
+    type = "go-to",
+    target = "exception",
+    exception = node.exception,
+  }
+end
+
 local function report_to_line(report)
   local line = {}
 
@@ -37,6 +74,7 @@ local function assertion_to_line(assertion)
   end
 
   if next(assertion.context) then
+    -- stylua: ignore
     table.insert(line, NuiText(
       " - " .. table.concat(
         utils.reverse_table(assertion.context),
@@ -236,10 +274,10 @@ function M.create(buf, on_event)
         return
       end
 
-      on_event({
-        type = "go-to",
-        node = node,
-      })
+      local event = node_to_go_to_event(node)
+      if event then
+        on_event(event)
+      end
     end, map_options)
   end
 

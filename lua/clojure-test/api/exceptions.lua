@@ -7,45 +7,82 @@ local NuiPopup = require("nui.popup")
 
 local M = {}
 
-function M.go_to_exception(target_window, exception)
+local select = nio.wrap(function(choices, opts, cb)
+  vim.ui.select(choices, opts, cb)
+end, 3)
+
+local function frame_to_location(frame)
+  local line = frame.line
+  if line == vim.NIL then
+    line = nil
+  end
+
+  if not frame.location or frame.location == vim.NIL then
+    return
+  end
+
+  return {
+    id = frame.id,
+    file = frame.location.file,
+    line = line or frame.location.line or 1,
+    column = frame.location.column or 0,
+  }
+end
+
+function M.go_to_exception(target_window, exception, use_frame)
   local stack = exception["stack-trace"]
   if not stack or stack == vim.NIL then
     return
   end
 
+  local function navigate(location)
+    vim.api.nvim_set_current_win(target_window)
+    vim.cmd("edit " .. location.file)
+    vim.schedule(function()
+      vim.api.nvim_win_set_cursor(0, { location.line, location.column })
+    end)
+  end
+
+  local locations = {}
+  if use_frame then
+    local location = frame_to_location(use_frame)
+    if location then
+      return navigate(location)
+    end
+  end
+
   -- This will iterate over all the frames in a stack trace until a frame points to
   -- a line/file/symbol that is within the project classpath and cwd.
   --
-  -- This is a bit hacky as it involves many sequential evals, but it's quick and
-  -- dirty and it works.
-  --
-  -- Future implementation should probably do all this work in clojure land over a
-  -- single eval
+  -- This is done by looking at the information inside of a frames 'location'
+  -- which is populated by the clojure plugin from doing a classpath analysis.
   for _, frame in ipairs(stack) do
-    local line = frame.line
-    if line == vim.NIL then
-      line = nil
+    local location = frame_to_location(frame)
+    if location then
+      table.insert(locations, location)
     end
+  end
 
-    local symbols = {}
-    if frame.package then
-      table.insert(symbols, frame.package)
-    end
-    if frame.names[1] then
-      table.insert(symbols, frame.names[1])
-    end
+  if #locations == 0 then
+    return
+  end
 
-    for _, symbol in ipairs(symbols) do
-      local meta = config.backend:resolve_metadata_for_symbol(symbol)
-      if meta and meta ~= vim.NIL then
-        vim.api.nvim_set_current_win(target_window)
-        vim.cmd("edit " .. meta.file)
-        vim.schedule(function()
-          vim.api.nvim_win_set_cursor(0, { line or meta.line or 1, meta.column or 0 })
-        end)
-        return
-      end
-    end
+  if #locations == 1 then
+    return navigate(locations[1])
+  end
+
+  local choices = vim.tbl_map(function(location)
+    return location.id
+  end, locations)
+
+  local test, index = select(choices, { prompt = "Select location" })
+  if not test then
+    return
+  end
+
+  local location = locations[index]
+  if location then
+    navigate(location)
   end
 end
 
@@ -86,20 +123,22 @@ function M.render_exception(sym)
   local last_active_window = vim.api.nvim_get_current_win()
 
   local popup = open_exception_popup()
-  components.exception.render_exceptions_to_buf(popup.bufnr, exceptions)
+  components.exception.render_exceptions_to_buf(popup.bufnr, {
+    exceptions = exceptions,
+    navigation = {
+      chords = config.keys.ui.go_to,
+      on_navigate = function(exception, frame)
+        nio.run(function()
+          M.go_to_exception(last_active_window, exception, frame)
+        end)
+      end,
+    },
+  })
 
   local event = require("nui.utils.autocmd").event
   popup:on({ event.WinLeave }, function()
     popup:unmount()
   end, {})
-
-  for _, chord in ipairs(utils.into_table(config.keys.ui.go_to)) do
-    popup:map("n", chord, function()
-      nio.run(function()
-        M.go_to_exception(last_active_window, exceptions[#exceptions])
-      end)
-    end)
-  end
 end
 
 return M

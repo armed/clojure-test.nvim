@@ -4,6 +4,7 @@ function M.write_clojure_to_buf(buf, contents)
   vim.api.nvim_set_option_value("filetype", "clojure", {
     buf = buf,
   })
+  vim.api.nvim_buf_set_var(buf, "clojure_test_buffer_type", "report")
 
   local lines = {}
   if contents then

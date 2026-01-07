@@ -4,5 +4,6 @@
 .build
 
 deps.local.edn
+.nrepl-port
 
 target

@@ -18,23 +18,23 @@
     (.startsWith child parent)))
 
 (defn- remove-overlapping-directories
-  "Remove overlapping paths from a given collection of directories, keeping 
-  the more specific path.
-   
-  Example:
+  "Remove overlapping paths from a given collection of directories, keeping the
+   more specific path.
 
-  ```clj
-  (remove-overlapping-directories #{\"/a\" \"/a/b\" \"/c\"})
-  ;; =>
-  #{\"/a/b\" \"/c\" }
-  ```"
+   Example:
+
+   ```clj
+   (remove-overlapping-directories #{\"/a\" \"/a/b\" \"/c\"})
+   ;; =>
+   #{\"/a/b\" \"/c\" }
+   ```"
   [classpath]
   (->> classpath
        (sort-by identity (fn [left right]
                            (compare (count left) (count right))))
        (reduce
         (fn [paths path]
-          (let [paths (filter
+          (let [paths (filterv
                        (fn [existing]
                          (not (is-parent existing path)))
                        paths)]
@@ -60,28 +60,27 @@
 (defn- find-test-files []
   (mapcat
    (fn [dir]
-     (let [files (file-seq (io/file dir))]
-       (->> files
+     (into []
+           (comp
             (filter (fn [file]
                       (.isFile file)))
             (map (fn [file]
                    (subs (.getAbsolutePath file) (inc (count dir)))))
 
             (filter (fn [path]
-                      (re-find #"_test.clj" path))))))
+                      (re-find #"_test.clj" path))))
+           (file-seq (io/file dir))))
    (get-classpath)))
 
 (defn get-test-namespaces []
   (let [test-files (find-test-files)]
-
-    (map
+    (mapv
      (fn [file]
        (let [without-ext (str/replace file #"\.clj" "")
              as-ns (-> without-ext
                        (str/replace #"/" ".")
                        (str/replace #"_" "-"))]
          (symbol as-ns)))
-
      test-files)))
 
 (defn get-tests-in-ns [namespace]
