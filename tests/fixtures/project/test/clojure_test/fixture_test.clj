@@ -5,3 +5,6 @@
 
 (deftest foo-test
   (is (= "bar" (fixture/foo))))
+
+(deftest ^:integration with-metadata-test
+  (is (= "bar" (fixture/foo))))

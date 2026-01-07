@@ -79,6 +79,24 @@ function M.get_current_namespace()
   return nil
 end
 
+-- Given a node at the expected position of a deftest var name attempt to
+-- extract the var name as text.
+--
+-- Vars can be prefixed with metadata - in which case we only want to extract
+-- the 'name' part. This handles that scenario correctly.
+local function unwrap_test_name(node)
+  if not node then
+    return
+  end
+
+  local sym_name = node:field("name")[1]
+  if not sym_name or sym_name:type() ~= "sym_name" then
+    return
+  end
+
+  return vim.treesitter.get_node_text(sym_name, 0)
+end
+
 function M.get_test_at_cursor()
   local node = get_node_at_cursor()
   if not node then
@@ -112,8 +130,7 @@ function M.get_test_at_cursor()
     return
   end
 
-  local test_name = vim.treesitter.get_node_text(root_form:named_child(1), 0)
-
+  local test_name = unwrap_test_name(root_form:named_child(1))
   if not test_name then
     return
   end
