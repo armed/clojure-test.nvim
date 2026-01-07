@@ -58,13 +58,15 @@ return function(on_event)
     layout = nil,
     tree = nil,
 
-    last_active_window = vim.api.nvim_get_current_win(),
+    last_active_window = 0,
   }
 
   function UI:mount()
     if UI.mounted then
       return
     end
+
+    UI.last_active_window = vim.api.nvim_get_current_win()
 
     UI.mounted = true
     UI.layout = layout_api.create(function(event)
@@ -98,12 +100,18 @@ return function(on_event)
       return
     end
 
+    local is_focused = UI.layout:is_focused()
+
     UI.mounted = false
     UI.layout:unmount()
     UI.layout = nil
     UI.tree = nil
 
-    vim.api.nvim_set_current_win(UI.last_active_window)
+    if is_focused then
+      if vim.api.nvim_win_is_valid(UI.last_active_window) then
+        vim.api.nvim_set_current_win(UI.last_active_window)
+      end
+    end
 
     on_event({
       type = "unmount",

@@ -13,6 +13,17 @@ local function is_window_visible(win_id)
   end
 end
 
+local function is_focused(windows)
+  local currently_focused_window = vim.api.nvim_get_current_win()
+  local focused = false
+  for _, win in pairs(windows) do
+    if win.winid == currently_focused_window then
+      focused = true
+    end
+  end
+  return focused
+end
+
 local function cycle_focus(windows, direction)
   local ordered_windows = { windows.tree, windows.left, windows.right }
   ordered_windows = vim.tbl_filter(function(window)
@@ -171,6 +182,10 @@ function M.create(on_event)
 
   function FloatLayout:unmount()
     layout:unmount()
+  end
+
+  function FloatLayout:is_focused()
+    return is_focused(windows)
   end
 
   return FloatLayout
