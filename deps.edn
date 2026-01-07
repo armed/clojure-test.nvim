@@ -1,4 +1,4 @@
-{:paths ["clojure"]
+{:paths ["clojure/src"]
 
  :deps {metosin/jsonista {:mvn/version "0.3.13"}
         org.clj-commons/pretty {:mvn/version "3.3.2"}}
