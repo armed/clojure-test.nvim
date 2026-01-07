@@ -96,7 +96,7 @@ function M.render_exception(sym)
   for _, chord in ipairs(utils.into_table(config.keys.ui.go_to)) do
     popup:map("n", chord, function()
       nio.run(function()
-        M.go_to_exception(last_active_window, exceptions[1])
+        M.go_to_exception(last_active_window, exceptions[#exceptions])
       end)
     end)
   end
