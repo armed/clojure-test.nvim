@@ -18,6 +18,9 @@ function M.render_exception_to_buf(buf, exception, start_line)
   })
 
   local lines = {}
+  -- This is an index of line->frame which can be used as a lookup to compute
+  -- which frame the cursor is at when doing a `gd` jump.
+  local locations = {}
 
   local exception_title = NuiLine()
   exception_title:append(exception["class-name"], "Error")
@@ -63,6 +66,7 @@ function M.render_exception_to_buf(buf, exception, start_line)
         end
 
         table.insert(lines, frame_line)
+        locations[#lines] = frame
       end
     end
   end
@@ -79,7 +83,7 @@ function M.render_exception_to_buf(buf, exception, start_line)
     line:render(buf, -1, start_line + i)
   end
 
-  return #lines
+  return #lines, locations
 end
 
 -- Render a given exception chain to a specified target `buf`.
@@ -103,6 +107,15 @@ function M.render_exceptions_to_buf(buf, opts)
   vim.api.nvim_buf_set_lines(buf, start_line, -1, false, {})
   vim.api.nvim_buf_set_var(buf, "clojure_test_buffer_type", "exception")
 
+  local total_lines = 0
+  local locations = {}
+
+  for _, ex in ipairs(utils.reverse_table(opts.exceptions)) do
+    local lines, new_locations = M.render_exception_to_buf(buf, ex, start_line + total_lines)
+    total_lines = total_lines + lines
+    locations = vim.tbl_extend("force", locations, new_locations)
+  end
+
   if opts.navigation then
     for _, chord in ipairs(utils.into_table(opts.navigation.chords)) do
       vim.keymap.set("n", chord, function()
@@ -111,10 +124,10 @@ function M.render_exceptions_to_buf(buf, opts)
           return
         end
 
-        local exception = opts.exceptions[#opts.exceptions]
-
         local cursor = vim.api.nvim_win_get_cursor(0)
-        local frame = exception["stack-trace"][cursor[1] - 1]
+
+        local exception = opts.exceptions[#opts.exceptions]
+        local frame = locations[cursor[1]]
 
         opts.navigation.on_navigate(exception, frame)
       end, {
@@ -122,13 +135,6 @@ function M.render_exceptions_to_buf(buf, opts)
         desc = "Go to exception origin",
       })
     end
-  end
-
-  local total_lines = 0
-
-  for _, ex in ipairs(utils.reverse_table(opts.exceptions)) do
-    local lines = M.render_exception_to_buf(buf, ex, start_line + total_lines)
-    total_lines = total_lines + lines
   end
 
   return total_lines
