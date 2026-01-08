@@ -29,7 +29,7 @@
                              [:name "MIT"]
                              [:url "https://opensource.org/license/mit"]]]]})
 
-  (b/copy-dir {:src-dirs ["clojure"]
+  (b/copy-dir {:src-dirs ["clojure/src"]
                :target-dir class-dir})
 
   (b/jar {:class-dir class-dir
