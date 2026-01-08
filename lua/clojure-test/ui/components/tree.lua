@@ -73,7 +73,7 @@ local function assertion_to_line(assertion)
     table.insert(line, NuiText("Fail"))
   end
 
-  if next(assertion.context) then
+  if assertion.context and next(assertion.context) then
     -- stylua: ignore
     table.insert(line, NuiText(
       " - " .. table.concat(
