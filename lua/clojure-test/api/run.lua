@@ -9,7 +9,12 @@ local function go_to_test(target_window, test)
     return
   end
 
-  vim.api.nvim_set_current_win(target_window)
+  if vim.api.nvim_win_is_valid(target_window) then
+    vim.api.nvim_set_current_win(target_window)
+  else
+    -- TODO: As a fallback we should try find an appropriate window to switch to
+  end
+
   vim.cmd("edit " .. meta.file)
   vim.schedule(function()
     vim.api.nvim_win_set_cursor(0, { meta.line or 0, meta.column or 0 })
@@ -35,16 +40,18 @@ end
 
 local M = {
   active_ui = nil,
+  last_active_window = nil,
+  unmounted = false,
 }
 
 function M.open_reports(reports)
-  local last_active_window = vim.api.nvim_get_current_win()
+  M.last_active_window = vim.api.nvim_get_current_win()
 
   local ui = M.active_ui
   if not ui then
     ui = layouts.create_layout(function(event)
       if event.type == "go-to" then
-        return handle_go_to_event(last_active_window, event)
+        return handle_go_to_event(M.last_active_window, event)
       end
     end)
     M.active_ui = ui
@@ -59,19 +66,17 @@ function M.run_tests(tests)
     config.hooks.before_run(tests)
   end
 
-  local state = {
-    last_active_window = vim.api.nvim_get_current_win(),
-    unmounted = false,
-  }
+  M.last_active_window = vim.api.nvim_get_current_win()
+  M.unmounted = false
 
   local ui = M.active_ui
   if not ui then
     ui = layouts.create_layout(function(event)
       if event.type == "go-to" then
-        return handle_go_to_event(state.last_active_window, event)
+        return handle_go_to_event(M.last_active_window, event)
       end
       if event.type == "unmount" then
-        state.unmounted = true
+        M.unmounted = true
         M.active_ui = nil
         return
       end
@@ -97,7 +102,7 @@ function M.run_tests(tests)
   nio.run(function()
     local semaphore = nio.control.semaphore(1)
     for _, test in ipairs(tests) do
-      if state.unmounted then
+      if M.unmounted then
         break
       end
 
