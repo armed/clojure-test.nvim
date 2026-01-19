@@ -46,6 +46,8 @@ local M = {
   active_ui = nil,
   last_active_window = nil,
   unmounted = false,
+  stopped = false,
+  current_reports = nil,
 }
 
 function M.open_reports(reports)
@@ -84,6 +86,7 @@ function M.run_tests(tests)
   end
 
   M.unmounted = false
+  M.stopped = false
 
   local ui = layouts.create_layout(function(event)
     if event.type == "go-to" then
@@ -99,9 +102,9 @@ function M.run_tests(tests)
 
   ui:mount()
 
-  local reports = {}
+  M.current_reports = {}
   for _, test in ipairs(tests) do
-    reports[test] = {
+    M.current_reports[test] = {
       test = test,
       status = "pending",
       assertions = {},
@@ -110,12 +113,12 @@ function M.run_tests(tests)
 
   local queue = nio.control.queue()
 
-  ui:render_reports(reports)
+  ui:render_reports(M.current_reports)
 
   nio.run(function()
     local semaphore = nio.control.semaphore(1)
     for _, test in ipairs(tests) do
-      if M.unmounted then
+      if M.unmounted or M.stopped then
         break
       end
 
@@ -135,12 +138,12 @@ function M.run_tests(tests)
       break
     end
 
-    reports[report.test] = report
-    ui:render_reports(reports)
+    M.current_reports[report.test] = report
+    ui:render_reports(M.current_reports)
   end
 
   local passed, failed = 0, 0
-  for _, report in pairs(reports) do
+  for _, report in pairs(M.current_reports) do
     if report.status == "passed" then
       passed = passed + 1
     elseif report.status == "failed" then
@@ -152,7 +155,7 @@ function M.run_tests(tests)
   local msg = string.format("Tests: %d passed, %d failed", passed, failed)
   vim.notify(msg, level)
 
-  return reports
+  return M.current_reports
 end
 
 function M.toggle_panel()
@@ -160,6 +163,17 @@ function M.toggle_panel()
     return M.active_ui:toggle()
   end
   return false
+end
+
+function M.stop_tests()
+  M.stopped = true
+  if M.active_ui and M.current_reports then
+    M.active_ui:render_reports(M.current_reports)
+  end
+end
+
+function M.is_running()
+  return M.active_ui ~= nil and not M.stopped
 end
 
 return M

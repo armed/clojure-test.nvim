@@ -142,4 +142,8 @@ function M.toggle_panel()
   run_api.toggle_panel()
 end
 
+function M.stop_tests()
+  run_api.stop_tests()
+end
+
 return M

@@ -49,13 +49,15 @@ local function node_to_go_to_event(node)
 end
 
 local function count_reports(reports)
-  local counts = { all = 0, failed = 0, passed = 0 }
+  local counts = { all = 0, failed = 0, passed = 0, pending = 0 }
   for _, report in pairs(reports) do
     counts.all = counts.all + 1
     if report.status == "failed" then
       counts.failed = counts.failed + 1
     elseif report.status == "passed" then
       counts.passed = counts.passed + 1
+    elseif report.status == "pending" then
+      counts.pending = counts.pending + 1
     end
   end
   return counts
@@ -88,6 +90,19 @@ local function build_winbar(counts, filter)
     table.insert(parts, "%#DiagnosticOk#[" .. passed_text .. "]%*")
   else
     table.insert(parts, "%#DiagnosticOk# " .. passed_text .. " %*")
+  end
+
+  if counts.pending > 0 then
+    table.insert(parts, "%=")
+    local completed = counts.all - counts.pending
+    local run_api = require("clojure-test.api.run")
+    if run_api.stopped then
+      local stopped_text = string.format("Stopped (%d/%d)", completed, counts.all)
+      table.insert(parts, "%#DiagnosticWarn#" .. stopped_text .. "%*")
+    else
+      local pending_text = string.format("Running %d/%d (s to stop)", completed, counts.all)
+      table.insert(parts, "%#DiagnosticHint#" .. pending_text .. "%*")
+    end
   end
 
   return table.concat(parts, "")
@@ -366,7 +381,7 @@ function M.create(buf, winid, on_event)
     buf = buf,
     winid = winid,
     reports = {},
-    counts = { all = 0, failed = 0, passed = 0 },
+    counts = { all = 0, failed = 0, passed = 0, pending = 0 },
   }
 
   set_winbar(winid, FilteredTree.counts, current_filter)

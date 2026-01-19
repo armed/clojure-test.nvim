@@ -142,6 +142,10 @@ return function(on_event)
         UI:hide()
       end, { noremap = true })
     end
+
+    UI.layout:map("n", "s", function()
+      require("clojure-test.api.run").stop_tests()
+    end, { noremap = true })
   end
 
   function UI:unmount()
