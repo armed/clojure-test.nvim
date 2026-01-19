@@ -149,6 +149,46 @@ return function(on_event)
     })
   end
 
+  function UI:hide()
+    if not UI.mounted or UI.layout:is_hidden() then
+      return
+    end
+
+    local is_focused = UI.layout:is_focused()
+    UI.layout:hide()
+
+    if is_focused and vim.api.nvim_win_is_valid(UI.last_active_window) then
+      vim.api.nvim_set_current_win(UI.last_active_window)
+    end
+  end
+
+  function UI:show()
+    if not UI.mounted or not UI.layout:is_hidden() then
+      return
+    end
+
+    UI.layout:show()
+    UI.tree.winid = UI.layout.windows.tree
+    vim.api.nvim_set_current_win(UI.layout.windows.tree)
+  end
+
+  function UI:toggle()
+    if not UI.mounted then
+      return false
+    end
+
+    if UI.layout:is_hidden() then
+      UI:show()
+    else
+      UI:hide()
+    end
+    return true
+  end
+
+  function UI:is_hidden()
+    return UI.mounted and UI.layout:is_hidden()
+  end
+
   function UI:render_reports(reports)
     if not UI.mounted then
       return

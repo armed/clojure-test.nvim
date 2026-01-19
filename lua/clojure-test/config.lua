@@ -10,6 +10,9 @@ local M = {
   },
 
   keys = {
+    global = {
+      toggle_panel = nil,
+    },
     ui = {
       expand_node = { "l", "<Right>" },
       collapse_node = { "h", "<Left>" },

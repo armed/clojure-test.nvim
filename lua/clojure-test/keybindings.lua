@@ -24,6 +24,7 @@ function M.setup_keybindings(keys)
   setup_keybinding(global.run_tests_in_ns, api.run_tests_in_ns, "Run all tests in a namespace")
   setup_keybinding(global.rerun_previous, api.rerun_previous, "Rerun the last run set of tests")
   setup_keybinding(global.load_test_namespaces, api.load_tests, "Find and load test namespaces in classpath")
+  setup_keybinding(global.toggle_panel, api.toggle_panel, "Toggle test panel")
 end
 
 return M

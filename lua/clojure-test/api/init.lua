@@ -138,4 +138,8 @@ function M.run_tests_in_path(path)
   end)
 end
 
+function M.toggle_panel()
+  run_api.toggle_panel()
+end
+
 return M

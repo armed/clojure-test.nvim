@@ -63,18 +63,11 @@ function M.create(on_event)
       right = nil,
     },
     mounted = false,
+    hidden = false,
     mode = "single",
   }
 
-  function Layout:mount()
-    if self.mounted then
-      return
-    end
-
-    self.buffers.tree = create_scratch_buffer("clojure-test-tree")
-    self.buffers.left = create_scratch_buffer("clojure-test-output")
-    self.buffers.right = create_scratch_buffer("clojure-test-output")
-
+  function Layout:_create_windows()
     local height = calculate_height()
 
     vim.cmd("botright " .. height .. "split")
@@ -90,12 +83,39 @@ function M.create(on_event)
     self.windows.tree = main_winid
     self.windows.right = right_winid
     self.windows.left = nil
-    self.mode = "single"
-    self.mounted = true
+
+    if self.mode == "double" then
+      vim.api.nvim_set_current_win(self.windows.right)
+      vim.cmd("leftabove vsplit")
+      local left_winid = vim.api.nvim_get_current_win()
+      vim.api.nvim_win_set_buf(left_winid, self.buffers.left)
+      vim.wo[left_winid].winfixheight = true
+      self.windows.left = left_winid
+    end
 
     vim.api.nvim_set_current_win(self.windows.tree)
-
     self:_setup_bindings()
+  end
+
+  function Layout:mount()
+    if self.mounted and self.hidden then
+      self:show()
+      return
+    end
+
+    if self.mounted then
+      return
+    end
+
+    self.buffers.tree = create_scratch_buffer("clojure-test-tree")
+    self.buffers.left = create_scratch_buffer("clojure-test-output")
+    self.buffers.right = create_scratch_buffer("clojure-test-output")
+
+    self.mode = "single"
+    self.mounted = true
+    self.hidden = false
+
+    self:_create_windows()
   end
 
   function Layout:unmount()
@@ -118,7 +138,44 @@ function M.create(on_event)
     end
 
     self.mounted = false
+    self.hidden = false
     self.mode = "single"
+  end
+
+  function Layout:hide()
+    if not self.mounted or self.hidden then
+      return
+    end
+
+    for name, winid in pairs(self.windows) do
+      if is_window_valid(winid) then
+        vim.api.nvim_win_close(winid, true)
+      end
+      self.windows[name] = nil
+    end
+
+    self.hidden = true
+  end
+
+  function Layout:show()
+    if not self.mounted or not self.hidden then
+      return
+    end
+
+    self.hidden = false
+    self:_create_windows()
+  end
+
+  function Layout:toggle()
+    if self.hidden then
+      self:show()
+    else
+      self:hide()
+    end
+  end
+
+  function Layout:is_hidden()
+    return self.hidden
   end
 
   function Layout:render_single()

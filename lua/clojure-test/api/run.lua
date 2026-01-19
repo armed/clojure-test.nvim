@@ -133,4 +133,11 @@ function M.run_tests(tests)
   return reports
 end
 
+function M.toggle_panel()
+  if M.active_ui then
+    return M.active_ui:toggle()
+  end
+  return false
+end
+
 return M
