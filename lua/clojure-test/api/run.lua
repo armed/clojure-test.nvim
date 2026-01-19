@@ -77,12 +77,13 @@ function M.run_tests(tests)
   end
 
   M.last_active_window = vim.api.nvim_get_current_win()
-  M.unmounted = false
 
   if M.active_ui then
     M.active_ui:unmount()
     M.active_ui = nil
   end
+
+  M.unmounted = false
 
   local ui = layouts.create_layout(function(event)
     if event.type == "go-to" then
