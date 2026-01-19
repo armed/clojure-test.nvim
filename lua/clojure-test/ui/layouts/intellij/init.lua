@@ -111,7 +111,7 @@ return function(on_event)
 
     UI.layout:mount()
 
-    UI.tree = components.filtered_tree.create(UI.layout.buffers.tree, function(event)
+    UI.tree = components.filtered_tree.create(UI.layout.buffers.tree, UI.layout.windows.tree, function(event)
       if event.type == "hover" then
         return handle_on_move(UI.layout, event, on_event)
       end

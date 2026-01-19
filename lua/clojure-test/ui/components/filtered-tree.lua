@@ -61,51 +61,43 @@ local function count_reports(reports)
   return counts
 end
 
-local function render_filter_panel(bufnr, counts, filter)
-  local ns = vim.api.nvim_create_namespace("clojure-test-filter")
-  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, 2)
+local function build_winbar(counts, filter)
+  local parts = {}
 
   local all_text = string.format("All(%d)", counts.all)
   local failed_text = string.format("✗%d", counts.failed)
   local passed_text = string.format("✓%d", counts.passed)
 
-  local all_part, failed_part, passed_part
   if filter == "all" then
-    all_part = "[" .. all_text .. "]"
-    failed_part = " " .. failed_text .. " "
-    passed_part = " " .. passed_text .. " "
-  elseif filter == "failed" then
-    all_part = " " .. all_text .. " "
-    failed_part = "[" .. failed_text .. "]"
-    passed_part = " " .. passed_text .. " "
+    table.insert(parts, "[" .. all_text .. "]")
   else
-    all_part = " " .. all_text .. " "
-    failed_part = " " .. failed_text .. " "
-    passed_part = "[" .. passed_text .. "]"
+    table.insert(parts, " " .. all_text .. " ")
   end
 
-  local line = all_part .. failed_part .. passed_part
+  table.insert(parts, "│")
 
-  vim.bo[bufnr].readonly = false
-  vim.bo[bufnr].modifiable = true
-  vim.api.nvim_buf_set_lines(bufnr, 0, 1, false, { line })
+  if filter == "failed" then
+    table.insert(parts, "%#DiagnosticError#[" .. failed_text .. "]%*")
+  else
+    table.insert(parts, "%#DiagnosticError# " .. failed_text .. " %*")
+  end
 
-  local failed_start = #all_part + 1
-  local failed_end = failed_start + #failed_text
-  local passed_start = #all_part + #failed_part + 1
-  local passed_end = passed_start + #passed_text
+  table.insert(parts, "│")
 
-  vim.api.nvim_buf_set_extmark(bufnr, ns, 0, failed_start, {
-    end_col = failed_end,
-    hl_group = "DiagnosticError",
-  })
+  if filter == "passed" then
+    table.insert(parts, "%#DiagnosticOk#[" .. passed_text .. "]%*")
+  else
+    table.insert(parts, "%#DiagnosticOk# " .. passed_text .. " %*")
+  end
 
-  vim.api.nvim_buf_set_extmark(bufnr, ns, 0, passed_start, {
-    end_col = passed_end,
-    hl_group = "DiagnosticOk",
-  })
+  return table.concat(parts, "")
+end
 
-  vim.api.nvim_buf_set_lines(bufnr, 1, 2, false, { "────────────────────" })
+local function set_winbar(winid, counts, filter)
+  if not winid or not vim.api.nvim_win_is_valid(winid) then
+    return
+  end
+  vim.wo[winid].winbar = build_winbar(counts, filter)
 end
 
 local function group_reports_by_namespace(reports)
@@ -235,7 +227,7 @@ local function test_to_node(report, is_expanded)
   return node
 end
 
-local function namespace_to_line(ns_name, tests, filter)
+local function namespace_to_line(ns_name, tests)
   local line = {}
 
   local failed_count = 0
@@ -299,7 +291,7 @@ local function reports_to_nodes(reports, filter, prev_nodes)
       table.insert(children, test_to_node(test, is_expanded))
     end
 
-    local ns_line = namespace_to_line(ns_name, ns_data.tests, filter)
+    local ns_line = namespace_to_line(ns_name, ns_data.tests)
     local ns_node = NuiTree.Node({
       type = "namespace",
       line = ns_line,
@@ -326,7 +318,7 @@ end
 
 local M = {}
 
-function M.create(buf, on_event)
+function M.create(buf, winid, on_event)
   local tree = NuiTree({
     bufnr = buf,
     ns_id = "clojure-test-filtered-tree",
@@ -372,9 +364,12 @@ function M.create(buf, on_event)
   local FilteredTree = {
     tree = tree,
     buf = buf,
+    winid = winid,
     reports = {},
     counts = { all = 0, failed = 0, passed = 0 },
   }
+
+  set_winbar(winid, FilteredTree.counts, current_filter)
 
   local map_options = {
     noremap = true,
@@ -419,7 +414,7 @@ function M.create(buf, on_event)
       end
 
       if node and node:collapse() then
-        tree:render(3)
+        tree:render(1)
       end
     end, map_options)
   end
@@ -429,7 +424,7 @@ function M.create(buf, on_event)
       local linenr = vim.api.nvim_win_get_cursor(0)[1]
       local node = tree:get_node(linenr)
       if node and node:expand() then
-        tree:render(3)
+        tree:render(1)
       end
     end, map_options)
   end
@@ -454,9 +449,6 @@ function M.create(buf, on_event)
     buffer = buf,
     callback = function()
       local linenr = vim.api.nvim_win_get_cursor(0)[1]
-      if linenr <= 2 then
-        return
-      end
       local node = tree:get_node(linenr)
       if not node then
         return
@@ -473,7 +465,7 @@ function M.create(buf, on_event)
     self.reports = reports
     self.counts = count_reports(reports)
 
-    render_filter_panel(self.buf, self.counts, current_filter)
+    set_winbar(self.winid, self.counts, current_filter)
 
     local nodes = reports_to_nodes(reports, current_filter, tree:get_nodes())
 
@@ -487,7 +479,7 @@ function M.create(buf, on_event)
     end
 
     tree:set_nodes(nodes)
-    tree:render(3)
+    tree:render(1)
   end
 
   return FilteredTree
