@@ -43,6 +43,11 @@ end
 function M.is_regular_buffer(bufnr)
   local buftype = vim.bo[bufnr].buftype
   local bufname = vim.api.nvim_buf_get_name(bufnr)
+  local ft = vim.bo[bufnr].filetype
+
+  if ft:match("^clojure%-test%-") then
+    return false
+  end
 
   return buftype == ""
     and bufname ~= ""

@@ -2,6 +2,7 @@ local config = require("clojure-test.config")
 
 local M = {
   float = require("clojure-test.ui.layouts.float"),
+  intellij = require("clojure-test.ui.layouts.intellij"),
 }
 
 ---@class Layout

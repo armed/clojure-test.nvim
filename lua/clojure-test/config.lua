@@ -4,6 +4,9 @@ local clients = require("clojure-test.clients")
 local M = {
   layout = {
     style = "float",
+    intellij = {
+      height_percent = 30,
+    },
   },
 
   keys = {
