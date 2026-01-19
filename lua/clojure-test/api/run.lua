@@ -51,15 +51,21 @@ local M = {
 function M.open_reports(reports)
   M.last_active_window = vim.api.nvim_get_current_win()
 
-  local ui = M.active_ui
-  if not ui then
-    ui = layouts.create_layout(function(event)
-      if event.type == "go-to" then
-        return handle_go_to_event(M.last_active_window, event)
-      end
-    end)
-    M.active_ui = ui
+  if M.active_ui then
+    M.active_ui:unmount()
+    M.active_ui = nil
   end
+
+  local ui = layouts.create_layout(function(event)
+    if event.type == "go-to" then
+      return handle_go_to_event(M.last_active_window, event)
+    end
+    if event.type == "unmount" then
+      M.active_ui = nil
+      return
+    end
+  end)
+  M.active_ui = ui
 
   ui:mount()
   ui:render_reports(reports)
@@ -73,20 +79,22 @@ function M.run_tests(tests)
   M.last_active_window = vim.api.nvim_get_current_win()
   M.unmounted = false
 
-  local ui = M.active_ui
-  if not ui then
-    ui = layouts.create_layout(function(event)
-      if event.type == "go-to" then
-        return handle_go_to_event(M.last_active_window, event)
-      end
-      if event.type == "unmount" then
-        M.unmounted = true
-        M.active_ui = nil
-        return
-      end
-    end)
-    M.active_ui = ui
+  if M.active_ui then
+    M.active_ui:unmount()
+    M.active_ui = nil
   end
+
+  local ui = layouts.create_layout(function(event)
+    if event.type == "go-to" then
+      return handle_go_to_event(M.last_active_window, event)
+    end
+    if event.type == "unmount" then
+      M.unmounted = true
+      M.active_ui = nil
+      return
+    end
+  end)
+  M.active_ui = ui
 
   ui:mount()
 
