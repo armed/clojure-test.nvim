@@ -139,6 +139,19 @@ function M.run_tests(tests)
     ui:render_reports(reports)
   end
 
+  local passed, failed = 0, 0
+  for _, report in pairs(reports) do
+    if report.status == "passed" then
+      passed = passed + 1
+    elseif report.status == "failed" then
+      failed = failed + 1
+    end
+  end
+
+  local level = failed > 0 and vim.log.levels.WARN or vim.log.levels.INFO
+  local msg = string.format("Tests: %d passed, %d failed", passed, failed)
+  vim.notify(msg, level)
+
   return reports
 end
 

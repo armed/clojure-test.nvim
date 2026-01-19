@@ -139,7 +139,7 @@ return function(on_event)
 
     for _, chord in ipairs(utils.into_table(config.keys.ui.quit)) do
       UI.layout:map("n", chord, function()
-        UI:unmount()
+        UI:hide()
       end, { noremap = true })
     end
   end
