@@ -36,7 +36,15 @@ function M.go_to_exception(target_window, exception, use_frame)
   end
 
   local function navigate(location)
-    vim.api.nvim_set_current_win(target_window)
+    local win = target_window
+    if not vim.api.nvim_win_is_valid(win) or not utils.is_regular_buffer(vim.api.nvim_win_get_buf(win)) then
+      win = utils.find_appropriate_window()
+    end
+
+    if win then
+      vim.api.nvim_set_current_win(win)
+    end
+
     vim.cmd("edit " .. location.file)
     vim.schedule(function()
       vim.api.nvim_win_set_cursor(0, { location.line, location.column })

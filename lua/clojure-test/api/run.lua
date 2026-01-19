@@ -1,6 +1,7 @@
 local exceptions_api = require("clojure-test.api.exceptions")
 local layouts = require("clojure-test.ui.layouts")
 local config = require("clojure-test.config")
+local utils = require("clojure-test.utils")
 local nio = require("nio")
 
 local function go_to_test(target_window, test)
@@ -9,10 +10,13 @@ local function go_to_test(target_window, test)
     return
   end
 
-  if vim.api.nvim_win_is_valid(target_window) then
-    vim.api.nvim_set_current_win(target_window)
-  else
-    -- TODO: As a fallback we should try find an appropriate window to switch to
+  local win = target_window
+  if not vim.api.nvim_win_is_valid(win) or not utils.is_regular_buffer(vim.api.nvim_win_get_buf(win)) then
+    win = utils.find_appropriate_window()
+  end
+
+  if win then
+    vim.api.nvim_set_current_win(win)
   end
 
   vim.cmd("edit " .. meta.file)
