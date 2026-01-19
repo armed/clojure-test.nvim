@@ -6,6 +6,15 @@ local utils = require("clojure-test.utils")
 local function handle_on_move(layout, event, on_event)
   local node = event.node
 
+  if node.type == "namespace" then
+    vim.schedule(function()
+      layout:render_single()
+      local summary_text = string.format("Namespace: %s", node.ns)
+      vim.api.nvim_buf_set_lines(layout.buffers.right, 0, -1, false, { summary_text })
+    end)
+    return
+  end
+
   if node.type == "report" then
     vim.schedule(function()
       layout:render_single()
@@ -102,7 +111,7 @@ return function(on_event)
 
     UI.layout:mount()
 
-    UI.tree = components.tree.create(UI.layout.buffers.tree, function(event)
+    UI.tree = components.filtered_tree.create(UI.layout.buffers.tree, function(event)
       if event.type == "hover" then
         return handle_on_move(UI.layout, event, on_event)
       end
