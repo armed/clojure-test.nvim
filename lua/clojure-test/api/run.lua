@@ -1,6 +1,7 @@
 local exceptions_api = require("clojure-test.api.exceptions")
 local layouts = require("clojure-test.ui.layouts")
 local config = require("clojure-test.config")
+local utils = require("clojure-test.utils")
 local nio = require("nio")
 
 local function go_to_test(target_window, test)
@@ -9,10 +10,13 @@ local function go_to_test(target_window, test)
     return
   end
 
-  if vim.api.nvim_win_is_valid(target_window) then
-    vim.api.nvim_set_current_win(target_window)
-  else
-    -- TODO: As a fallback we should try find an appropriate window to switch to
+  local win = target_window
+  if not vim.api.nvim_win_is_valid(win) or not utils.is_regular_buffer(vim.api.nvim_win_get_buf(win)) then
+    win = utils.find_appropriate_window()
+  end
+
+  if win then
+    vim.api.nvim_set_current_win(win)
   end
 
   vim.cmd("edit " .. meta.file)
@@ -42,20 +46,28 @@ local M = {
   active_ui = nil,
   last_active_window = nil,
   unmounted = false,
+  stopped = false,
+  current_reports = nil,
 }
 
 function M.open_reports(reports)
   M.last_active_window = vim.api.nvim_get_current_win()
 
-  local ui = M.active_ui
-  if not ui then
-    ui = layouts.create_layout(function(event)
-      if event.type == "go-to" then
-        return handle_go_to_event(M.last_active_window, event)
-      end
-    end)
-    M.active_ui = ui
+  if M.active_ui then
+    M.active_ui:unmount()
+    M.active_ui = nil
   end
+
+  local ui = layouts.create_layout(function(event)
+    if event.type == "go-to" then
+      return handle_go_to_event(M.last_active_window, event)
+    end
+    if event.type == "unmount" then
+      M.active_ui = nil
+      return
+    end
+  end)
+  M.active_ui = ui
 
   ui:mount()
   ui:render_reports(reports)
@@ -67,28 +79,32 @@ function M.run_tests(tests)
   end
 
   M.last_active_window = vim.api.nvim_get_current_win()
-  M.unmounted = false
 
-  local ui = M.active_ui
-  if not ui then
-    ui = layouts.create_layout(function(event)
-      if event.type == "go-to" then
-        return handle_go_to_event(M.last_active_window, event)
-      end
-      if event.type == "unmount" then
-        M.unmounted = true
-        M.active_ui = nil
-        return
-      end
-    end)
-    M.active_ui = ui
+  if M.active_ui then
+    M.active_ui:unmount()
+    M.active_ui = nil
   end
+
+  M.unmounted = false
+  M.stopped = false
+
+  local ui = layouts.create_layout(function(event)
+    if event.type == "go-to" then
+      return handle_go_to_event(M.last_active_window, event)
+    end
+    if event.type == "unmount" then
+      M.unmounted = true
+      M.active_ui = nil
+      return
+    end
+  end)
+  M.active_ui = ui
 
   ui:mount()
 
-  local reports = {}
+  M.current_reports = {}
   for _, test in ipairs(tests) do
-    reports[test] = {
+    M.current_reports[test] = {
       test = test,
       status = "pending",
       assertions = {},
@@ -97,12 +113,12 @@ function M.run_tests(tests)
 
   local queue = nio.control.queue()
 
-  ui:render_reports(reports)
+  ui:render_reports(M.current_reports)
 
   nio.run(function()
     local semaphore = nio.control.semaphore(1)
     for _, test in ipairs(tests) do
-      if M.unmounted then
+      if M.unmounted or M.stopped then
         break
       end
 
@@ -122,11 +138,42 @@ function M.run_tests(tests)
       break
     end
 
-    reports[report.test] = report
-    ui:render_reports(reports)
+    M.current_reports[report.test] = report
+    ui:render_reports(M.current_reports)
   end
 
-  return reports
+  local passed, failed = 0, 0
+  for _, report in pairs(M.current_reports) do
+    if report.status == "passed" then
+      passed = passed + 1
+    elseif report.status == "failed" then
+      failed = failed + 1
+    end
+  end
+
+  local level = failed > 0 and vim.log.levels.WARN or vim.log.levels.INFO
+  local msg = string.format("Tests: %d passed, %d failed", passed, failed)
+  vim.notify(msg, level)
+
+  return M.current_reports
+end
+
+function M.toggle_panel()
+  if M.active_ui then
+    return M.active_ui:toggle()
+  end
+  return false
+end
+
+function M.stop_tests()
+  M.stopped = true
+  if M.active_ui and M.current_reports then
+    M.active_ui:render_reports(M.current_reports)
+  end
+end
+
+function M.is_running()
+  return M.active_ui ~= nil and not M.stopped
 end
 
 return M

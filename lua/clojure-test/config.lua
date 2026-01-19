@@ -4,9 +4,15 @@ local clients = require("clojure-test.clients")
 local M = {
   layout = {
     style = "float",
+    intellij = {
+      height_percent = 30,
+    },
   },
 
   keys = {
+    global = {
+      toggle_panel = nil,
+    },
     ui = {
       expand_node = { "l", "<Right>" },
       collapse_node = { "h", "<Left>" },
@@ -16,6 +22,7 @@ local M = {
       cycle_focus_backwards = "<S-Tab>",
 
       quit = { "q", "<Esc>" },
+      stop_tests = "s",
     },
   },
 
