@@ -8,6 +8,9 @@ local function handle_on_move(layout, event, on_event)
 
   if node.type == "namespace" then
     vim.schedule(function()
+      if not layout.mounted then
+        return
+      end
       layout:render_single()
       local summary_text = string.format("Namespace: %s", node.ns)
       vim.api.nvim_buf_set_lines(layout.buffers.right, 0, -1, false, { summary_text })
@@ -17,6 +20,9 @@ local function handle_on_move(layout, event, on_event)
 
   if node.type == "report" then
     vim.schedule(function()
+      if not layout.mounted then
+        return
+      end
       layout:render_single()
       components.summary.render_summary(layout.buffers.right, node.report)
     end)
@@ -26,6 +32,9 @@ local function handle_on_move(layout, event, on_event)
   if node.assertion then
     if node.assertion.exceptions then
       vim.schedule(function()
+        if not layout.mounted then
+          return
+        end
         if node.assertion.expected then
           layout:render_double()
           components.clojure.write_clojure_to_buf(layout.buffers.left, node.assertion.expected)
@@ -66,6 +75,9 @@ local function handle_on_move(layout, event, on_event)
     end
 
     vim.schedule(function()
+      if not layout.mounted then
+        return
+      end
       layout:render_double()
       components.clojure.write_clojure_to_buf(layout.buffers.left, node.assertion.expected)
       components.clojure.write_clojure_to_buf(layout.buffers.right, node.assertion.actual)
@@ -75,6 +87,9 @@ local function handle_on_move(layout, event, on_event)
 
   if node.exception then
     vim.schedule(function()
+      if not layout.mounted then
+        return
+      end
       layout:render_single()
       components.exception.render_exceptions_to_buf(layout.buffers.right, {
         exceptions = { node.exception },
@@ -84,6 +99,9 @@ local function handle_on_move(layout, event, on_event)
   end
 
   vim.schedule(function()
+    if not layout.mounted then
+      return
+    end
     layout:render_single()
     components.clojure.write_clojure_to_buf(layout.buffers.right, "")
   end)
