@@ -186,7 +186,7 @@ local function exceptions_to_nodes(exceptions)
   return nodes
 end
 
-local function assertion_to_node(test, assertion)
+local function assertion_to_node(test, assertion, is_expanded)
   local line = assertion_to_line(assertion)
   local children = exceptions_to_nodes(assertion.exceptions or {})
 
@@ -197,7 +197,7 @@ local function assertion_to_node(test, assertion)
     test = test,
   }, children)
 
-  if assertion.type ~= "pass" then
+  if assertion.type ~= "pass" or is_expanded then
     node:expand()
   end
 
@@ -221,12 +221,14 @@ local function test_to_line(report)
   return line
 end
 
-local function test_to_node(report, is_expanded)
+local function test_to_node(report, is_expanded, expanded_assertions)
   local line = test_to_line(report)
 
   local children = {}
-  for _, assertion in ipairs(report.assertions) do
-    table.insert(children, assertion_to_node(report.test, assertion))
+  for i, assertion in ipairs(report.assertions) do
+    local assertion_key = report.test .. ":" .. i
+    local assertion_expanded = expanded_assertions[assertion_key]
+    table.insert(children, assertion_to_node(report.test, assertion, assertion_expanded))
   end
 
   local node = NuiTree.Node({
@@ -276,17 +278,26 @@ local function get_empty_state_message(filter)
   return "No tests"
 end
 
-local function reports_to_nodes(reports, filter, prev_nodes)
+local function reports_to_nodes(reports, filter, tree)
   local prev_expanded = {}
-  for _, ns_node in ipairs(prev_nodes) do
+  local expanded_assertions = {}
+  for _, ns_node in ipairs(tree:get_nodes()) do
     if ns_node.type == "namespace" then
-      if ns_node.is_expanded and ns_node:is_expanded() then
+      if ns_node:is_expanded() then
         prev_expanded[ns_node.ns] = true
       end
-      if ns_node.get_children then
-        for _, child in ipairs(ns_node:get_children()) do
-          if child.type == "report" and child:is_expanded() then
-            prev_expanded[child.test] = true
+      for _, report_id in ipairs(ns_node:get_child_ids() or {}) do
+        local report_node = tree:get_node(report_id)
+        if report_node and report_node.type == "report" then
+          if report_node:is_expanded() then
+            prev_expanded[report_node.test] = true
+          end
+          for i, assertion_id in ipairs(report_node:get_child_ids() or {}) do
+            local assertion_node = tree:get_node(assertion_id)
+            if assertion_node and assertion_node.type == "assertion" and assertion_node:is_expanded() then
+              local assertion_key = report_node.test .. ":" .. i
+              expanded_assertions[assertion_key] = true
+            end
           end
         end
       end
@@ -303,7 +314,7 @@ local function reports_to_nodes(reports, filter, prev_nodes)
     local children = {}
     for _, test in ipairs(filtered_tests) do
       local is_expanded = prev_expanded[test.test]
-      table.insert(children, test_to_node(test, is_expanded))
+      table.insert(children, test_to_node(test, is_expanded, expanded_assertions))
     end
 
     local ns_line = namespace_to_line(ns_name, ns_data.tests)
@@ -430,6 +441,7 @@ function M.create(buf, winid, on_event)
 
       if node and node:collapse() then
         tree:render(1)
+        on_event({ type = "resize" })
       end
     end, map_options)
   end
@@ -440,6 +452,7 @@ function M.create(buf, winid, on_event)
       local node = tree:get_node(linenr)
       if node and node:expand() then
         tree:render(1)
+        on_event({ type = "resize" })
       end
     end, map_options)
   end
@@ -482,7 +495,7 @@ function M.create(buf, winid, on_event)
 
     set_winbar(self.winid, self.counts, current_filter)
 
-    local nodes = reports_to_nodes(reports, current_filter, tree:get_nodes())
+    local nodes = reports_to_nodes(reports, current_filter, tree)
 
     if #nodes == 0 and self.counts.all > 0 then
       local empty_msg = get_empty_state_message(current_filter)

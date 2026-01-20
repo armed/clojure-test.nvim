@@ -70,6 +70,9 @@ function M.create()
     local main_winid = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(main_winid, self.buffers.tree)
     vim.wo[main_winid].winfixheight = true
+    vim.wo[main_winid].number = false
+    vim.wo[main_winid].relativenumber = false
+    vim.wo[main_winid].signcolumn = "no"
 
     vim.cmd("vsplit")
     local right_winid = vim.api.nvim_get_current_win()
@@ -254,8 +257,9 @@ function M.create()
 
     local lines = vim.api.nvim_buf_get_lines(self.buffers.tree, 0, -1, false)
     local max_width = 20
+    local surroundings_offet = 3
     for _, line in ipairs(lines) do
-      max_width = math.max(max_width, vim.fn.strdisplaywidth(line) + 3)
+      max_width = math.max(max_width, vim.fn.strdisplaywidth(line) + surroundings_offet)
     end
 
     vim.api.nvim_win_set_width(self.windows.tree, max_width)

@@ -117,6 +117,10 @@ return function(on_event)
         return handle_on_move(UI.layout, event, on_event)
       end
 
+      if event.type == "resize" then
+        return UI.layout:resize_tree_width()
+      end
+
       on_event(event)
     end)
 
