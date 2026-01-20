@@ -7,7 +7,7 @@ local function handle_on_move(layout, event, on_event)
   local node = event.node
 
   if node.type == "namespace" then
-    utils.guarded_schedule({ layout.buffers.right }, function()
+    utils.guarded_schedule(layout, { layout.buffers.right }, function()
       layout:render_single()
       local summary_text = string.format("Namespace: %s", node.ns)
       vim.api.nvim_buf_set_lines(layout.buffers.right, 0, -1, false, { summary_text })
@@ -16,7 +16,7 @@ local function handle_on_move(layout, event, on_event)
   end
 
   if node.type == "report" then
-    utils.guarded_schedule({ layout.buffers.right }, function()
+    utils.guarded_schedule(layout, { layout.buffers.right }, function()
       layout:render_single()
       components.summary.render_summary(layout.buffers.right, node.report)
     end)
@@ -25,7 +25,7 @@ local function handle_on_move(layout, event, on_event)
 
   if node.assertion then
     if node.assertion.exceptions then
-      utils.guarded_schedule({ layout.buffers.right }, function()
+      utils.guarded_schedule(layout, { layout.buffers.right }, function()
         if node.assertion.expected then
           if not vim.api.nvim_buf_is_valid(layout.buffers.left) then
             return
@@ -68,7 +68,7 @@ local function handle_on_move(layout, event, on_event)
       return
     end
 
-    utils.guarded_schedule({ layout.buffers.left, layout.buffers.right }, function()
+    utils.guarded_schedule(layout, { layout.buffers.left, layout.buffers.right }, function()
       layout:render_double()
       components.clojure.write_clojure_to_buf(layout.buffers.left, node.assertion.expected)
       components.clojure.write_clojure_to_buf(layout.buffers.right, node.assertion.actual)
@@ -77,7 +77,7 @@ local function handle_on_move(layout, event, on_event)
   end
 
   if node.exception then
-    utils.guarded_schedule({ layout.buffers.right }, function()
+    utils.guarded_schedule(layout, { layout.buffers.right }, function()
       layout:render_single()
       components.exception.render_exceptions_to_buf(layout.buffers.right, {
         exceptions = { node.exception },
@@ -86,7 +86,7 @@ local function handle_on_move(layout, event, on_event)
     return
   end
 
-  utils.guarded_schedule({ layout.buffers.right }, function()
+  utils.guarded_schedule(layout, { layout.buffers.right }, function()
     layout:render_single()
     components.clojure.write_clojure_to_buf(layout.buffers.right, "")
   end)

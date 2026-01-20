@@ -72,8 +72,11 @@ function M.find_appropriate_window()
   return nil
 end
 
-function M.guarded_schedule(buffers, fn)
+function M.guarded_schedule(layout, buffers, fn)
   vim.schedule(function()
+    if not layout.mounted then
+      return
+    end
     for _, buf in ipairs(buffers) do
       if not vim.api.nvim_buf_is_valid(buf) then
         return
