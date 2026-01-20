@@ -7,10 +7,7 @@ local function handle_on_move(layout, event, on_event)
   local node = event.node
 
   if node.type == "namespace" then
-    vim.schedule(function()
-      if not layout.mounted then
-        return
-      end
+    utils.guarded_schedule({ layout.buffers.right }, function()
       layout:render_single()
       local summary_text = string.format("Namespace: %s", node.ns)
       vim.api.nvim_buf_set_lines(layout.buffers.right, 0, -1, false, { summary_text })
@@ -19,10 +16,7 @@ local function handle_on_move(layout, event, on_event)
   end
 
   if node.type == "report" then
-    vim.schedule(function()
-      if not layout.mounted then
-        return
-      end
+    utils.guarded_schedule({ layout.buffers.right }, function()
       layout:render_single()
       components.summary.render_summary(layout.buffers.right, node.report)
     end)
@@ -31,11 +25,11 @@ local function handle_on_move(layout, event, on_event)
 
   if node.assertion then
     if node.assertion.exceptions then
-      vim.schedule(function()
-        if not layout.mounted then
-          return
-        end
+      utils.guarded_schedule({ layout.buffers.right }, function()
         if node.assertion.expected then
+          if not vim.api.nvim_buf_is_valid(layout.buffers.left) then
+            return
+          end
           layout:render_double()
           components.clojure.write_clojure_to_buf(layout.buffers.left, node.assertion.expected)
           components.exception.render_exceptions_to_buf(layout.buffers.right, {
@@ -74,10 +68,7 @@ local function handle_on_move(layout, event, on_event)
       return
     end
 
-    vim.schedule(function()
-      if not layout.mounted then
-        return
-      end
+    utils.guarded_schedule({ layout.buffers.left, layout.buffers.right }, function()
       layout:render_double()
       components.clojure.write_clojure_to_buf(layout.buffers.left, node.assertion.expected)
       components.clojure.write_clojure_to_buf(layout.buffers.right, node.assertion.actual)
@@ -86,10 +77,7 @@ local function handle_on_move(layout, event, on_event)
   end
 
   if node.exception then
-    vim.schedule(function()
-      if not layout.mounted then
-        return
-      end
+    utils.guarded_schedule({ layout.buffers.right }, function()
       layout:render_single()
       components.exception.render_exceptions_to_buf(layout.buffers.right, {
         exceptions = { node.exception },
@@ -98,10 +86,7 @@ local function handle_on_move(layout, event, on_event)
     return
   end
 
-  vim.schedule(function()
-    if not layout.mounted then
-      return
-    end
+  utils.guarded_schedule({ layout.buffers.right }, function()
     layout:render_single()
     components.clojure.write_clojure_to_buf(layout.buffers.right, "")
   end)
@@ -123,9 +108,7 @@ return function(on_event)
     UI.last_active_window = vim.api.nvim_get_current_win()
 
     UI.mounted = true
-    UI.layout = layout_api.create(function(event)
-      on_event(event)
-    end)
+    UI.layout = layout_api.create()
 
     UI.layout:mount()
 
@@ -143,9 +126,11 @@ return function(on_event)
       end, { noremap = true })
     end
 
-    UI.layout:map("n", "s", function()
-      require("clojure-test.api.run").stop_tests()
-    end, { noremap = true })
+    for _, chord in ipairs(utils.into_table(config.keys.ui.stop_tests)) do
+      UI.layout:map("n", chord, function()
+        require("clojure-test.api.run").stop_tests()
+      end, { noremap = true })
+    end
   end
 
   function UI:unmount()
@@ -218,8 +203,6 @@ return function(on_event)
     UI.tree:render_reports(reports)
     UI.layout:resize_tree_width()
   end
-
-  function UI:focus() end
 
   return UI
 end

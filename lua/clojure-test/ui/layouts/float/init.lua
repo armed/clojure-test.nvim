@@ -153,7 +153,5 @@ return function(on_event)
     UI.tree:render_reports(reports)
   end
 
-  function UI:focus() end
-
   return UI
 end

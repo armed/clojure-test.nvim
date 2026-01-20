@@ -72,4 +72,15 @@ function M.find_appropriate_window()
   return nil
 end
 
+function M.guarded_schedule(buffers, fn)
+  vim.schedule(function()
+    for _, buf in ipairs(buffers) do
+      if not vim.api.nvim_buf_is_valid(buf) then
+        return
+      end
+    end
+    fn()
+  end)
+end
+
 return M

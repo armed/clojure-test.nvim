@@ -22,6 +22,7 @@ local M = {
       cycle_focus_backwards = "<S-Tab>",
 
       quit = { "q", "<Esc>" },
+      stop_tests = "s",
     },
   },
 

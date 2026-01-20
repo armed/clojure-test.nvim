@@ -3,8 +3,6 @@ local utils = require("clojure-test.utils")
 
 local M = {}
 
-local stored_height_percent = nil
-
 local function create_scratch_buffer(filetype)
   local bufnr = vim.api.nvim_create_buf(false, true)
   vim.bo[bufnr].buftype = "nofile"
@@ -15,9 +13,7 @@ local function create_scratch_buffer(filetype)
 end
 
 local function calculate_height()
-  local height_percent = stored_height_percent
-    or (config.layout.intellij and config.layout.intellij.height_percent)
-    or 30
+  local height_percent = (config.layout.intellij and config.layout.intellij.height_percent) or 30
   return math.floor(vim.o.lines * height_percent / 100)
 end
 
@@ -50,7 +46,7 @@ local function cycle_focus(windows, direction)
   vim.api.nvim_set_current_win(ordered_windows[index])
 end
 
-function M.create(on_event)
+function M.create()
   local Layout = {
     windows = {
       tree = nil,
@@ -188,7 +184,7 @@ function M.create(on_event)
     end
 
     local current_win = vim.api.nvim_get_current_win()
-    local restore_focus = current_win ~= self.windows.left
+    local was_left_focused = current_win == self.windows.left
 
     if is_window_valid(self.windows.left) then
       vim.api.nvim_win_close(self.windows.left, true)
@@ -197,7 +193,11 @@ function M.create(on_event)
 
     self.mode = "single"
 
-    if restore_focus and is_window_valid(current_win) then
+    if was_left_focused then
+      if is_window_valid(self.windows.right) then
+        vim.api.nvim_set_current_win(self.windows.right)
+      end
+    elseif is_window_valid(current_win) then
       vim.api.nvim_set_current_win(current_win)
     end
   end
