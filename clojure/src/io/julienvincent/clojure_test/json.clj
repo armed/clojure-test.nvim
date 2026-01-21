@@ -50,3 +50,18 @@
 (defn get-tests-in-path [path]
   (with-json-out
     (api.query/get-tests-in-path path)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn run-tests-parallel-start [test-syms opts]
+  (with-json-out
+    (api.runner/run-tests-parallel-start test-syms opts)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn stop-parallel-tests []
+  (with-json-out
+    (api.runner/stop-parallel-tests)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn get-parallel-results []
+  (with-json-out
+    (api.runner/get-parallel-results)))

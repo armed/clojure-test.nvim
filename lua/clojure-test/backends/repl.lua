@@ -9,6 +9,10 @@ local API = {
   resolve_metadata_for_symbol = "io.julienvincent.clojure-test.json/resolve-metadata-for-symbol",
   analyze_exception = "io.julienvincent.clojure-test.json/analyze-exception",
   get_tests_in_path = "io.julienvincent.clojure-test.json/get-tests-in-path",
+
+  run_tests_parallel_start = "io.julienvincent.clojure-test.json/run-tests-parallel-start",
+  stop_parallel_tests = "io.julienvincent.clojure-test.json/stop-parallel-tests",
+  get_parallel_results = "io.julienvincent.clojure-test.json/get-parallel-results",
 }
 
 local function statement(api, ...)
@@ -83,6 +87,27 @@ function M.create(client)
       return {}
     end
     return tests
+  end
+
+  function backend:run_tests_parallel_start(tests, opts)
+    local syms = {}
+    for _, t in ipairs(tests) do
+      table.insert(syms, "'" .. t)
+    end
+    local tests_str = "[" .. table.concat(syms, " ") .. "]"
+    local opts_str = "{}"
+    if opts and opts.thread_count then
+      opts_str = "{:thread-count " .. opts.thread_count .. "}"
+    end
+    return eval(client, API.run_tests_parallel_start, tests_str, opts_str)
+  end
+
+  function backend:stop_parallel_tests()
+    return eval(client, API.stop_parallel_tests)
+  end
+
+  function backend:get_parallel_results()
+    return eval(client, API.get_parallel_results)
   end
 
   return backend

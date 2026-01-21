@@ -111,35 +111,29 @@ function M.run_tests(tests)
     }
   end
 
-  local queue = nio.control.queue()
-
   ui:render_reports(M.current_reports)
 
-  nio.run(function()
-    local semaphore = nio.control.semaphore(1)
-    for _, test in ipairs(tests) do
-      if M.unmounted or M.stopped then
-        break
-      end
-
-      semaphore.with(function()
-        local report = config.backend:run_test(test)
-        if report then
-          queue.put(report)
-        end
-      end)
-    end
-    queue.put(nil)
-  end)
+  config.backend:run_tests_parallel_start(tests, {})
 
   while true do
-    local report = queue.get()
-    if report == nil then
+    if M.unmounted or M.stopped then
+      config.backend:stop_parallel_tests()
       break
     end
 
-    M.current_reports[report.test] = report
-    ui:render_reports(M.current_reports)
+    nio.sleep(100)
+
+    local state = config.backend:get_parallel_results()
+    if state then
+      for test, report in pairs(state.results or {}) do
+        M.current_reports[test] = report
+      end
+      ui:render_reports(M.current_reports)
+
+      if not state.running then
+        break
+      end
+    end
   end
 
   local passed, failed = 0, 0
