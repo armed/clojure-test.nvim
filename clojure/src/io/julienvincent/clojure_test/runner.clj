@@ -50,9 +50,12 @@
       (swap! parallel-results
              update (str test-sym)
              (fn [current]
-               (-> (or current {:test (str test-sym) :status "running" :assertions []})
-                   (update :assertions conj (parse-report event))
-                   (assoc :status (if (#{:fail :error} (:type event)) "failed" "passed"))))))))
+               (let [current (or current {:test (str test-sym) :status "running" :assertions []})
+                     failed? (or (= "failed" (:status current))
+                                 (#{:fail :error} (:type event)))]
+                 (-> current
+                     (update :assertions conj (parse-report event))
+                     (assoc :status (if failed? "failed" "passed")))))))))
 
 (defn run-tests-parallel-start [test-syms opts]
   (reset! parallel-results {})
