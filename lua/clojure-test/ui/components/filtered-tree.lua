@@ -332,11 +332,13 @@ local function reports_to_nodes(reports, filter, tree)
       end
     end
 
-    if has_failed or prev_expanded[ns_name] then
-      ns_node:expand()
-    end
+    if #children > 0 then
+      if has_failed or prev_expanded[ns_name] then
+        ns_node:expand()
+      end
 
-    table.insert(nodes, ns_node)
+      table.insert(nodes, ns_node)
+    end
   end
 
   return nodes
