@@ -255,8 +255,11 @@ function M.create()
       return
     end
 
+    local winbar = vim.wo[self.windows.tree].winbar or ""
+    local winbar_width = vim.fn.strdisplaywidth(winbar:gsub("%%#%w+#", ""):gsub("%%*", ""):gsub("%%=", ""))
+
     local lines = vim.api.nvim_buf_get_lines(self.buffers.tree, 0, -1, false)
-    local max_width = 20
+    local max_width = math.max(20, winbar_width)
     local surroundings_offet = 3
     for _, line in ipairs(lines) do
       max_width = math.max(max_width, vim.fn.strdisplaywidth(line) + surroundings_offet)
