@@ -84,7 +84,8 @@
      test-files)))
 
 (defn get-tests-in-ns [namespace]
-  (require namespace)
+  (when-not (find-ns namespace)
+    (require namespace))
   (into []
         (comp
          (filter
