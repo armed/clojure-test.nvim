@@ -2,10 +2,19 @@ local exceptions_api = require("clojure-test.api.exceptions")
 local location = require("clojure-test.api.location")
 local tests_api = require("clojure-test.api.tests")
 local run_api = require("clojure-test.api.run")
+local config = require("clojure-test.config")
 local utils = require("clojure-test.utils")
 local nio = require("nio")
 
 local M = {}
+
+local function ensure_connected()
+  if not config.backend:is_connected() then
+    vim.notify("No REPL connection. Connect to nREPL first.", vim.log.levels.ERROR)
+    return false
+  end
+  return true
+end
 
 M.state = {
   previous = nil,
@@ -27,6 +36,9 @@ end
 
 function M.run_all_tests()
   nio.run(function()
+    if not ensure_connected() then
+      return
+    end
     local tests = tests_api.get_all_tests()
     if #tests == 0 then
       return
@@ -37,6 +49,9 @@ end
 
 function M.run_tests()
   with_exceptions(function()
+    if not ensure_connected() then
+      return
+    end
     local current_test = location.get_test_at_cursor()
 
     local tests
@@ -56,6 +71,9 @@ end
 
 function M.run_tests_in_ns()
   with_exceptions(function()
+    if not ensure_connected() then
+      return
+    end
     local namespaces
     local current_namespace = location.get_current_namespace()
     local test_namespaces = tests_api.get_test_namespaces()
@@ -86,6 +104,9 @@ function M.rerun_previous()
     if not M.state.previous then
       return
     end
+    if not ensure_connected() then
+      return
+    end
     run_tests_and_update_state(M.state.previous)
   end)
 end
@@ -104,6 +125,9 @@ function M.rerun_failed()
       return
     end
 
+    if not ensure_connected() then
+      return
+    end
     run_tests_and_update_state(failed)
   end)
 end
@@ -117,18 +141,27 @@ end
 
 function M.load_tests()
   with_exceptions(function()
+    if not ensure_connected() then
+      return
+    end
     tests_api.load_tests()
   end)
 end
 
 function M.analyze_exception(sym)
   with_exceptions(function()
+    if not ensure_connected() then
+      return
+    end
     exceptions_api.render_exception(sym)
   end)
 end
 
 function M.run_tests_in_path(path)
   with_exceptions(function()
+    if not ensure_connected() then
+      return
+    end
     local tests = tests_api.get_tests_in_path(path)
     if not tests or type(tests) ~= "table" or #tests == 0 then
       vim.notify("No tests found in " .. path, vim.log.levels.WARN)
