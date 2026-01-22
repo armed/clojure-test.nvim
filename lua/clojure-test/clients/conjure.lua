@@ -2,6 +2,52 @@ local nio = require("nio")
 
 local M = {}
 
+function M.is_connected()
+  local future = nio.control.future()
+
+  vim.schedule(function()
+    local ok, client = pcall(require, "conjure.client")
+    if not ok then
+      future.set(false)
+      return
+    end
+
+    local ok_eval, fn = pcall(function()
+      return require("conjure.eval")["eval-str"]
+    end)
+    if not ok_eval then
+      future.set(false)
+      return
+    end
+
+    local responded = false
+    client["with-filetype"]("clojure", fn, {
+      origin = "clojure-test.connection-check",
+      context = "user",
+      code = "true",
+      ["passive?"] = true,
+      cb = function(result)
+        if responded then
+          return
+        end
+        if result.status["eval-error"] or result.status.done then
+          responded = true
+          future.set(not result.status["eval-error"])
+        end
+      end,
+    })
+
+    vim.defer_fn(function()
+      if not responded then
+        responded = true
+        future.set(false)
+      end
+    end, 500)
+  end)
+
+  return future
+end
+
 function M.eval(ns, code, opts)
   opts = opts or {}
 

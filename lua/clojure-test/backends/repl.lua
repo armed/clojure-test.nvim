@@ -59,6 +59,10 @@ end
 function M.create(client)
   local backend = {}
 
+  function backend:is_connected()
+    return client.is_connected().wait()
+  end
+
   function backend:load_test_namespaces()
     eval(client, API.load_test_namespaces)
   end
