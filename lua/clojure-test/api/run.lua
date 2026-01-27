@@ -119,11 +119,6 @@ function M.run_tests(tests, opts)
     ui:render_reports(M.current_reports)
   end
 
-  vim.api.nvim_exec_autocmds("User", {
-    pattern = "ClojureTestStarted",
-    data = { total = #tests },
-  })
-
   config.backend:run_tests_parallel_start(tests, {})
 
   while true do
@@ -162,10 +157,9 @@ function M.run_tests(tests, opts)
   local msg = string.format("Tests: %d passed, %d failed", passed, failed)
   vim.notify(msg, level)
 
-  vim.api.nvim_exec_autocmds("User", {
-    pattern = "ClojureTestFinished",
-    data = { passed = passed, failed = failed, total = passed + failed },
-  })
+  if config.hooks.after_run then
+    config.hooks.after_run({ passed = passed, failed = failed, total = passed + failed })
+  end
 
   return M.current_reports
 end
