@@ -73,7 +73,9 @@ function M.open_reports(reports)
   ui:render_reports(reports)
 end
 
-function M.run_tests(tests)
+function M.run_tests(tests, opts)
+  opts = opts or {}
+
   if config.hooks.before_run then
     config.hooks.before_run(tests)
   end
@@ -88,19 +90,21 @@ function M.run_tests(tests)
   M.unmounted = false
   M.stopped = false
 
-  local ui = layouts.create_layout(function(event)
-    if event.type == "go-to" then
-      return handle_go_to_event(M.last_active_window, event)
-    end
-    if event.type == "unmount" then
-      M.unmounted = true
-      M.active_ui = nil
-      return
-    end
-  end)
-  M.active_ui = ui
-
-  ui:mount()
+  local ui = nil
+  if not opts.headless then
+    ui = layouts.create_layout(function(event)
+      if event.type == "go-to" then
+        return handle_go_to_event(M.last_active_window, event)
+      end
+      if event.type == "unmount" then
+        M.unmounted = true
+        M.active_ui = nil
+        return
+      end
+    end)
+    M.active_ui = ui
+    ui:mount()
+  end
 
   M.current_reports = {}
   for _, test in ipairs(tests) do
@@ -111,7 +115,9 @@ function M.run_tests(tests)
     }
   end
 
-  ui:render_reports(M.current_reports)
+  if ui then
+    ui:render_reports(M.current_reports)
+  end
 
   vim.api.nvim_exec_autocmds("User", {
     pattern = "ClojureTestStarted",
@@ -133,7 +139,9 @@ function M.run_tests(tests)
       for test, report in pairs(state.results or {}) do
         M.current_reports[test] = report
       end
-      ui:render_reports(M.current_reports)
+      if ui then
+        ui:render_reports(M.current_reports)
+      end
 
       if not state.running then
         break

@@ -21,9 +21,9 @@ M.state = {
   last_run = nil,
 }
 
-local function run_tests_and_update_state(tests)
+local function run_tests_and_update_state(tests, opts)
   M.state.previous = tests
-  M.state.last_run = run_api.run_tests(tests)
+  M.state.last_run = run_api.run_tests(tests, opts)
 end
 
 local function with_exceptions(fn)
@@ -99,7 +99,7 @@ function M.run_tests_in_ns()
   end)
 end
 
-function M.rerun_previous()
+function M.rerun_previous(opts)
   with_exceptions(function()
     if not M.state.previous then
       return
@@ -107,7 +107,7 @@ function M.rerun_previous()
     if not ensure_connected() then
       return
     end
-    run_tests_and_update_state(M.state.previous)
+    run_tests_and_update_state(M.state.previous, opts)
   end)
 end
 
