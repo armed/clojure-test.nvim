@@ -179,4 +179,17 @@ function M.stop_tests()
   run_api.stop_tests()
 end
 
+function M.run_selected_tests()
+  with_exceptions(function()
+    if not ensure_connected() then
+      return
+    end
+    local tests = tests_api.select_tests_multi()
+    if #tests == 0 then
+      return
+    end
+    run_tests_and_update_state(tests)
+  end)
+end
+
 return M

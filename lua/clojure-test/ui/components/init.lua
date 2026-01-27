@@ -4,4 +4,5 @@ return {
   filtered_tree = require("clojure-test.ui.components.filtered-tree"),
   clojure = require("clojure-test.ui.components.clojure"),
   summary = require("clojure-test.ui.components.summary"),
+  test_picker = require("clojure-test.ui.components.test-picker"),
 }

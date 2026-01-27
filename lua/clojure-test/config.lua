@@ -24,6 +24,14 @@ local M = {
       quit = { "q", "<Esc>" },
       stop_tests = "s",
     },
+    picker = {
+      toggle = "a",
+      toggle_all = "A",
+      expand = "l",
+      collapse = "h",
+      confirm = "<CR>",
+      filter = "/",
+    },
   },
 
   hooks = {},
