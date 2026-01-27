@@ -34,7 +34,7 @@ local function with_exceptions(fn)
   end)
 end
 
-function M.run_all_tests()
+function M.run_all_tests(opts)
   nio.run(function()
     if not ensure_connected() then
       return
@@ -43,11 +43,11 @@ function M.run_all_tests()
     if #tests == 0 then
       return
     end
-    run_tests_and_update_state(tests)
+    run_tests_and_update_state(tests, opts)
   end)
 end
 
-function M.run_tests()
+function M.run_tests(opts)
   with_exceptions(function()
     if not ensure_connected() then
       return
@@ -65,11 +65,11 @@ function M.run_tests()
       return
     end
 
-    run_tests_and_update_state(tests)
+    run_tests_and_update_state(tests, opts)
   end)
 end
 
-function M.run_tests_in_ns()
+function M.run_tests_in_ns(opts)
   with_exceptions(function()
     if not ensure_connected() then
       return
@@ -95,7 +95,7 @@ function M.run_tests_in_ns()
       return
     end
 
-    run_tests_and_update_state(tests)
+    run_tests_and_update_state(tests, opts)
   end)
 end
 
@@ -111,7 +111,7 @@ function M.rerun_previous(opts)
   end)
 end
 
-function M.rerun_failed()
+function M.rerun_failed(opts)
   with_exceptions(function()
     local failed = {}
     for test, report in pairs(M.state.last_run) do
@@ -128,7 +128,7 @@ function M.rerun_failed()
     if not ensure_connected() then
       return
     end
-    run_tests_and_update_state(failed)
+    run_tests_and_update_state(failed, opts)
   end)
 end
 
@@ -157,7 +157,7 @@ function M.analyze_exception(sym)
   end)
 end
 
-function M.run_tests_in_path(path)
+function M.run_tests_in_path(path, opts)
   with_exceptions(function()
     if not ensure_connected() then
       return
@@ -167,7 +167,7 @@ function M.run_tests_in_path(path)
       vim.notify("No tests found in " .. path, vim.log.levels.WARN)
       return
     end
-    run_tests_and_update_state(tests)
+    run_tests_and_update_state(tests, opts)
   end)
 end
 
@@ -179,7 +179,7 @@ function M.stop_tests()
   run_api.stop_tests()
 end
 
-function M.run_selected_tests()
+function M.run_selected_tests(opts)
   with_exceptions(function()
     if not ensure_connected() then
       return
@@ -188,7 +188,7 @@ function M.run_selected_tests()
     if #tests == 0 then
       return
     end
-    run_tests_and_update_state(tests)
+    run_tests_and_update_state(tests, opts)
   end)
 end
 
