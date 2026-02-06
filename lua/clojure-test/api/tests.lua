@@ -9,25 +9,37 @@ end, 3)
 local M = {}
 
 local tests_cache = nil
+local all_tests_cache = nil
+local tests_by_ns_cache = nil
 
 function M.invalidate_cache()
   tests_cache = nil
+  all_tests_cache = nil
+  tests_by_ns_cache = nil
 end
 
 function M.load_tests()
   vim.notify("Loading tests...", vim.log.levels.INFO)
   config.backend:load_test_namespaces()
+  M.invalidate_cache()
   vim.notify("Test namespaces loaded!", vim.log.levels.INFO)
 end
 
 function M.get_all_tests()
-  return config.backend:get_tests()
+  if all_tests_cache then
+    return all_tests_cache
+  end
+
+  all_tests_cache = config.backend:get_tests()
+  return all_tests_cache
 end
 
 local function refresh_cache_async(on_refresh)
   nio.run(function()
     local fresh_tests = config.backend:get_tests()
     tests_cache = fresh_tests
+    all_tests_cache = fresh_tests
+    tests_by_ns_cache = nil
     if on_refresh then
       vim.schedule(function()
         on_refresh(fresh_tests)
@@ -36,15 +48,36 @@ local function refresh_cache_async(on_refresh)
   end)
 end
 
-function M.get_test_namespaces()
-  local tests = M.get_all_tests()
-  local namespaces = {}
+local function build_tests_by_ns(tests)
+  local grouped = {}
   for _, test in ipairs(tests) do
     local parsed = utils.parse_test(test)
-    if not utils.included_in_table(namespaces, parsed.ns) then
-      table.insert(namespaces, parsed.ns)
+    local ns_tests = grouped[parsed.ns]
+    if not ns_tests then
+      ns_tests = {}
+      grouped[parsed.ns] = ns_tests
     end
+    table.insert(ns_tests, test)
   end
+  return grouped
+end
+
+function M.get_tests_by_ns()
+  if tests_by_ns_cache then
+    return tests_by_ns_cache
+  end
+
+  tests_by_ns_cache = build_tests_by_ns(M.get_all_tests())
+  return tests_by_ns_cache
+end
+
+function M.get_test_namespaces()
+  local namespaces = {}
+  local tests_by_ns = M.get_tests_by_ns()
+  for ns, _ in pairs(tests_by_ns) do
+    table.insert(namespaces, ns)
+  end
+  table.sort(namespaces)
   return namespaces
 end
 
@@ -67,11 +100,8 @@ function M.select_namespaces()
 end
 
 function M.get_tests_in_ns(namespace)
-  local tests = M.get_all_tests()
-  return vim.tbl_filter(function(test)
-    local parsed = utils.parse_test(test)
-    return parsed.ns == namespace
-  end, tests)
+  local tests_by_ns = M.get_tests_by_ns()
+  return tests_by_ns[namespace] or {}
 end
 
 function M.get_tests_in_path(path)

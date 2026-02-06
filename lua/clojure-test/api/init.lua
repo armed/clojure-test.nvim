@@ -84,8 +84,9 @@ function M.run_tests_in_ns(opts)
     end
 
     local tests = {}
+    local tests_by_ns = tests_api.get_tests_by_ns()
     for _, namespace in ipairs(namespaces) do
-      local ns_tests = tests_api.get_tests_in_ns(namespace)
+      local ns_tests = tests_by_ns[namespace] or {}
       for _, test in ipairs(ns_tests) do
         table.insert(tests, test)
       end
