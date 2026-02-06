@@ -20,7 +20,9 @@ end
 
 function M.load_tests()
   vim.notify("Loading tests...", vim.log.levels.INFO)
-  config.backend:load_test_namespaces()
+  if not config.backend:load_test_namespaces() then
+    return
+  end
   M.invalidate_cache()
   vim.notify("Test namespaces loaded!", vim.log.levels.INFO)
 end
@@ -30,13 +32,21 @@ function M.get_all_tests()
     return all_tests_cache
   end
 
-  all_tests_cache = config.backend:get_tests()
+  local tests = config.backend:get_tests()
+  if not tests then
+    return nil
+  end
+
+  all_tests_cache = tests
   return all_tests_cache
 end
 
 local function refresh_cache_async(on_refresh)
   nio.run(function()
     local fresh_tests = config.backend:get_tests()
+    if not fresh_tests then
+      return
+    end
     tests_cache = fresh_tests
     all_tests_cache = fresh_tests
     tests_by_ns_cache = nil
@@ -67,13 +77,22 @@ function M.get_tests_by_ns()
     return tests_by_ns_cache
   end
 
-  tests_by_ns_cache = build_tests_by_ns(M.get_all_tests())
+  local all_tests = M.get_all_tests()
+  if not all_tests then
+    return nil
+  end
+
+  tests_by_ns_cache = build_tests_by_ns(all_tests)
   return tests_by_ns_cache
 end
 
 function M.get_test_namespaces()
   local namespaces = {}
   local tests_by_ns = M.get_tests_by_ns()
+  if not tests_by_ns then
+    return nil
+  end
+
   for ns, _ in pairs(tests_by_ns) do
     table.insert(namespaces, ns)
   end
@@ -83,6 +102,10 @@ end
 
 function M.select_tests()
   local tests = M.get_all_tests()
+  if not tests then
+    return {}
+  end
+
   local test = select(tests, { prompt = "Select test" })
   if not test then
     return {}
@@ -92,6 +115,10 @@ end
 
 function M.select_namespaces()
   local namespaces = M.get_test_namespaces()
+  if not namespaces then
+    return {}
+  end
+
   local namespace = select(namespaces, { prompt = "Select namespace" })
   if not namespace then
     return {}
@@ -101,6 +128,10 @@ end
 
 function M.get_tests_in_ns(namespace)
   local tests_by_ns = M.get_tests_by_ns()
+  if not tests_by_ns then
+    return nil
+  end
+
   return tests_by_ns[namespace] or {}
 end
 
@@ -133,6 +164,10 @@ function M.select_tests_multi()
     end)
 
     local tests = M.get_all_tests()
+    if not tests then
+      return {}
+    end
+
     tests_cache = tests
 
     if #tests == 0 then

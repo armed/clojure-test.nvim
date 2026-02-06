@@ -40,6 +40,10 @@ function M.run_all_tests(opts)
       return
     end
     local tests = tests_api.get_all_tests()
+    if not tests then
+      return
+    end
+
     if #tests == 0 then
       return
     end
@@ -77,6 +81,10 @@ function M.run_tests_in_ns(opts)
     local namespaces
     local current_namespace = location.get_current_namespace()
     local test_namespaces = tests_api.get_test_namespaces()
+    if not test_namespaces then
+      return
+    end
+
     if current_namespace and utils.included_in_table(test_namespaces, current_namespace) then
       namespaces = { current_namespace }
     else
@@ -85,6 +93,10 @@ function M.run_tests_in_ns(opts)
 
     local tests = {}
     local tests_by_ns = tests_api.get_tests_by_ns()
+    if not tests_by_ns then
+      return
+    end
+
     for _, namespace in ipairs(namespaces) do
       local ns_tests = tests_by_ns[namespace] or {}
       for _, test in ipairs(ns_tests) do

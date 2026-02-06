@@ -119,7 +119,12 @@ function M.run_tests(tests, opts)
     ui:render_reports(M.current_reports)
   end
 
-  config.backend:run_tests_parallel_start(tests, {})
+  local start_result = config.backend:run_tests_parallel_start(tests, opts)
+  if not start_result then
+    return M.current_reports
+  end
+
+  local rpc_failed = false
 
   while true do
     if M.unmounted or M.stopped then
@@ -130,18 +135,25 @@ function M.run_tests(tests, opts)
     nio.sleep(100)
 
     local state = config.backend:get_parallel_results()
-    if state then
-      for test, report in pairs(state.results or {}) do
-        M.current_reports[test] = report
-      end
-      if ui then
-        ui:render_reports(M.current_reports)
-      end
-
-      if not state.running then
-        break
-      end
+    if not state then
+      rpc_failed = true
+      break
     end
+
+    for test, report in pairs(state.results or {}) do
+      M.current_reports[test] = report
+    end
+    if ui then
+      ui:render_reports(M.current_reports)
+    end
+
+    if not state.running then
+      break
+    end
+  end
+
+  if rpc_failed then
+    return M.current_reports
   end
 
   local passed, failed = 0, 0
