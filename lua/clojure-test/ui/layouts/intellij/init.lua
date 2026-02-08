@@ -93,6 +93,17 @@ local function handle_on_move(layout, event, on_event)
 end
 
 return function(on_event)
+  local function resolve_restore_window(last_active_window)
+    if vim.api.nvim_win_is_valid(last_active_window) then
+      local bufnr = vim.api.nvim_win_get_buf(last_active_window)
+      if utils.is_regular_buffer(bufnr) then
+        return last_active_window
+      end
+    end
+
+    return utils.find_appropriate_window()
+  end
+
   local UI = {
     mounted = false,
     layout = nil,
@@ -150,8 +161,9 @@ return function(on_event)
     UI.tree = nil
 
     if is_focused then
-      if vim.api.nvim_win_is_valid(UI.last_active_window) then
-        vim.api.nvim_set_current_win(UI.last_active_window)
+      local restore_window = resolve_restore_window(UI.last_active_window)
+      if restore_window and vim.api.nvim_win_is_valid(restore_window) then
+        vim.api.nvim_set_current_win(restore_window)
       end
     end
 
@@ -168,14 +180,25 @@ return function(on_event)
     local is_focused = UI.layout:is_focused()
     UI.layout:hide()
 
-    if is_focused and vim.api.nvim_win_is_valid(UI.last_active_window) then
-      vim.api.nvim_set_current_win(UI.last_active_window)
+    if is_focused then
+      local restore_window = resolve_restore_window(UI.last_active_window)
+      if restore_window and vim.api.nvim_win_is_valid(restore_window) then
+        vim.api.nvim_set_current_win(restore_window)
+      end
     end
   end
 
   function UI:show()
     if not UI.mounted or not UI.layout:is_hidden() then
       return
+    end
+
+    local current_window = vim.api.nvim_get_current_win()
+    if vim.api.nvim_win_is_valid(current_window) then
+      local bufnr = vim.api.nvim_win_get_buf(current_window)
+      if utils.is_regular_buffer(bufnr) then
+        UI.last_active_window = current_window
+      end
     end
 
     UI.layout:show()
