@@ -34,6 +34,41 @@ local function with_exceptions(fn)
   end)
 end
 
+local function flatten_tests_in_namespaces(namespaces)
+  local tests_by_ns = tests_api.get_tests_by_ns()
+  if not tests_by_ns then
+    return nil
+  end
+
+  local tests = {}
+  for _, namespace in ipairs(namespaces) do
+    local ns_tests = tests_by_ns[namespace] or {}
+    for _, test in ipairs(ns_tests) do
+      table.insert(tests, test)
+    end
+  end
+
+  return tests
+end
+
+local function get_current_test_namespace()
+  local namespace = location.get_current_namespace()
+  if not namespace then
+    return nil
+  end
+
+  local test_namespaces = tests_api.get_test_namespaces()
+  if not test_namespaces then
+    return nil
+  end
+
+  if not utils.included_in_table(test_namespaces, namespace) then
+    return nil
+  end
+
+  return namespace
+end
+
 function M.run_all_tests(opts)
   nio.run(function()
     if not ensure_connected() then
@@ -73,35 +108,49 @@ function M.run_tests(opts)
   end)
 end
 
+function M.run_tests_in_current_ns(opts)
+  with_exceptions(function()
+    if not ensure_connected() then
+      return
+    end
+
+    local namespace = get_current_test_namespace()
+    if not namespace then
+      vim.notify("No tests found in current namespace", vim.log.levels.WARN)
+      return
+    end
+
+    local tests = flatten_tests_in_namespaces({ namespace })
+    if not tests then
+      return
+    end
+
+    if #tests == 0 then
+      vim.notify("No tests found in namespace " .. namespace, vim.log.levels.WARN)
+      return
+    end
+
+    run_tests_and_update_state(tests, opts)
+  end)
+end
+
 function M.run_tests_in_ns(opts)
   with_exceptions(function()
     if not ensure_connected() then
       return
     end
-    local namespaces
-    local current_namespace = location.get_current_namespace()
-    local test_namespaces = tests_api.get_test_namespaces()
-    if not test_namespaces then
-      return
-    end
 
-    if current_namespace and utils.included_in_table(test_namespaces, current_namespace) then
-      namespaces = { current_namespace }
+    local namespace = get_current_test_namespace()
+    local namespaces
+    if namespace then
+      namespaces = { namespace }
     else
       namespaces = tests_api.select_namespaces()
     end
 
-    local tests = {}
-    local tests_by_ns = tests_api.get_tests_by_ns()
-    if not tests_by_ns then
+    local tests = flatten_tests_in_namespaces(namespaces)
+    if not tests then
       return
-    end
-
-    for _, namespace in ipairs(namespaces) do
-      local ns_tests = tests_by_ns[namespace] or {}
-      for _, test in ipairs(ns_tests) do
-        table.insert(tests, test)
-      end
     end
 
     if #tests == 0 then
